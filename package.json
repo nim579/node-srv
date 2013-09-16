@@ -1,0 +1,27 @@
+{
+  "name": "node-srv",
+  "version": "0.1.0",
+  "description": "Simple static node.js server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nim579/node-srv.git"
+  },
+  "keywords": [
+    "node.js",
+    "http-server"
+  ],
+  "author": "Nick Iv (nim579)",
+  "license": "MIT",
+  "dependencies": {
+    "mime": "~1.2.11",
+    "commander": "~2.0.0",
+    "underscore": "~1.5.2"
+  },
+  "readmeFilename": "README.md",
+  "devDependencies": {}
+}
