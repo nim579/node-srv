@@ -1,8 +1,11 @@
 {
   "name": "node-srv",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Simple static node.js server",
   "main": "index.js",
+  "bin": {
+    "node-srv": "./bin/node-srv"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js"
