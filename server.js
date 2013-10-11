@@ -11,14 +11,20 @@ var serverClass = (function(){
 
     function serverClass(options){
         this.options = options;
+        this.parseLogsPath();
+        var _this = this
 
         process.on('SIGINT', function(){
-            process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
-            process.exit();
+            _this.stop(function(){
+                process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
+                process.exit();
+            });
         });
         process.on('SIGTERM', function(){
-            process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
-            process.exit();
+            _this.stop(function(){
+                process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
+                process.exit();
+            });
         });
 
         this.ev = new events();
@@ -39,12 +45,22 @@ var serverClass = (function(){
 
     serverClass.prototype.startServer = function(){
         var _this = this;
-        var server = http.createServer(function(request, response){
+        this.server = http.createServer(function(request, response){
             _this.addRequest(request, response);
         });
 
-        server.listen(Number(this.options.port));
+        this.server.listen(Number(this.options.port));
         process.stdout.write("Node.js server running at\n => http://localhost:" + this.options.port + "/\n");
+    }
+
+    serverClass.prototype.stop = function(callback){
+        if(this.server != null){
+            this.server.close(function(){
+                if(typeof callback === 'function') callback();
+            });
+        } else {
+            if(typeof callback === 'function') callback();
+        }
     }
 
     serverClass.prototype.done = function(callback, context){
@@ -117,25 +133,55 @@ var serverClass = (function(){
     }
 
     serverClass.prototype.response500 = function(reqObj, e, callback){
+        body = 'Error 500. ' + http.STATUS_CODES['500'] + '. ' + JSON.stringify(e);
+
+        if(fs.existsSync(this.options['500'])){
+            body = fs.readFileSync(this.options['500']);
+        }
+
         reqObj = _.extend(reqObj, {
             status: 500,
             mime: {"Content-Type": 'text/plain'},
-            body: 'Error 500! ' + JSON.stringify(e)
+            body: body
         });
         callback('Error 500', reqObj);
     }
 
     serverClass.prototype.response404 = function(callback){
+        body = 'Error 404. ' + http.STATUS_CODES['404'];
+
+        if(fs.existsSync(this.options['404'])){
+            body = fs.readFileSync(this.options['404']);
+        }
+
         reqObj = _.extend(reqObj, {
             status: 404,
             mime: {"Content-Type": 'text/plain'},
-            body: 'Error 404'
+            body: body
         });
         callback('Error 404', reqObj);
     }
 
     serverClass.prototype.writeLog = function(message){
-        if(this.options.logs) process.stdout.write(message);
+        if(this.options.logs){
+            if(typeof this.options.logs == 'string') {
+                fs.appendFileSync(this.options.logs, message);
+            } else {
+                process.stdout.write(message);
+            }
+        }
+    }
+
+    serverClass.prototype.parseLogsPath = function(){
+        if(typeof this.options.logs == 'string') {
+            logPath = path.resolve(process.cwd(), this.options.logs ? this.options.logs : '');
+
+            if(fs.existsSync(logPath)){
+                if(fs.statSync(logPath).isDirectory()) logPath = path.join(logPath, 'node-srv.log');
+            }
+
+            this.options.logs = logPath;
+        }
     }
 
     serverClass.prototype.accessLog = function(resObj){

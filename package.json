@@ -1,14 +1,14 @@
 {
   "name": "node-srv",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Simple static node.js server",
-  "main": "index.js",
+  "main": "server.js",
   "bin": {
     "node-srv": "./bin/node-srv"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -26,5 +26,6 @@
     "underscore": "~1.5.2"
   },
   "readmeFilename": "README.md",
-  "devDependencies": {}
+  "devDependencies": {},
+  "gitHead": "fc8d88100d95e57e5e45692f30fdd6e83a33609f"
 }
