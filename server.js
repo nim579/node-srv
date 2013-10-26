@@ -9,23 +9,26 @@ var mime        = require('mime')
 
 var serverClass = (function(){
 
-    function serverClass(options){
+    function serverClass(options, killer){
         this.options = options;
         this.parseLogsPath();
-        var _this = this
+        var _this = this;
+        var listenKill = ( typeof killer !== 'undefined' ? killer : true );
 
-        process.on('SIGINT', function(){
-            _this.stop(function(){
-                process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
-                process.exit();
+        if(listenKill){
+            process.on('SIGINT', function(){
+                _this.stop(function(){
+                    process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
+                    process.exit();
+                });
             });
-        });
-        process.on('SIGTERM', function(){
-            _this.stop(function(){
-                process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
-                process.exit();
+            process.on('SIGTERM', function(){
+                _this.stop(function(){
+                    process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
+                    process.exit();
+                });
             });
-        });
+        }
 
         this.ev = new events();
         this.stack = [];

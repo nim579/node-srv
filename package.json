@@ -1,6 +1,6 @@
 {
   "name": "node-srv",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Simple static node.js server",
   "main": "server.js",
   "bin": {
@@ -24,6 +24,9 @@
     "mime": "~1.2.11",
     "commander": "~2.0.0",
     "underscore": "~1.5.2"
+  },
+  "peerDependencies": {
+    "grunt": "~0.4.1"
   },
   "readmeFilename": "README.md",
   "devDependencies": {},
