@@ -90,7 +90,7 @@ nodeSrv.stop();
   $ npm install node-srv --save
   ~~~~~
 
-2. Make [Pcocfile](https://devcenter.heroku.com/articles/getting-started-with-nodejs#declare-process-types-with-procfile)
+2. Make [Procfile](https://devcenter.heroku.com/articles/getting-started-with-nodejs#declare-process-types-with-procfile)
 
   You can use root, logs, 404 500 arguments 
 
