@@ -1,4 +1,4 @@
-Node-srv
+Node-srv [![](https://badge.fury.io/js/node-srv.png)](https://npmjs.org/package/node-srv)
 ========
 Simple static node.js server. Supports Heroku and Grunt.js
 
