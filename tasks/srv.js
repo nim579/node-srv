@@ -22,6 +22,7 @@ module.exports = function(grunt) {
         var options = _.extend({
             port: '8000',
             root: './',
+            index: 'index.html',
             logs: false,
             '404': null,
             '500': null

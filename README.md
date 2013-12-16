@@ -39,6 +39,7 @@ nodeSrv.stop();
 
 - **-r, --root [path]** — Path, for server root-folder (default *./*)
 - **-p, --port [number]** — Port on which the server is started (default *8000*, or env PORT)
+- **-i, --index [file]** — Sets the index file for opening like default file in directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
 - **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to this file (if path is folder, default filename node-srv.log) 
 - **--404 [path]** — Path to 404 error page
 - **--500 [path]** — Path to 500 error page
@@ -66,6 +67,7 @@ nodeSrv.stop();
       server1: {
         port: 4001,
         '404': './404.html'
+        index: 'index.htm'
       },
       server2: {
         port: 4002,

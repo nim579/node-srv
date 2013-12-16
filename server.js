@@ -88,11 +88,11 @@ var serverClass = (function(){
             response: res,
             uid: Math.floor(Math.random()*10000000),
             startTime: new Date(),
-            uri: url.parse(req.url).pathname.replace(/^\//, '').replace(/\/$/, '/index.html'),
+            uri: url.parse(req.url).pathname.replace(/^\//, '').replace(/\/$/, '/'+this.options.index),
             body: ''
         }
         if(reqObj.uri.length === 0){
-            reqObj.uri = 'index.html';
+            reqObj.uri = this.options.index;
         }
         reqObj.filename = path.resolve(process.cwd(), this.options.root ? this.options.root : '', reqObj.uri);
 
