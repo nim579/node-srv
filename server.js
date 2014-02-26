@@ -144,7 +144,7 @@ var serverClass = (function(){
 
         reqObj = _.extend(reqObj, {
             status: 500,
-            mime: {"Content-Type": 'text/plain'},
+            mime: {"Content-Type": 'text/html'},
             body: body
         });
         callback('Error 500', reqObj);
@@ -159,7 +159,7 @@ var serverClass = (function(){
 
         reqObj = _.extend(reqObj, {
             status: 404,
-            mime: {"Content-Type": 'text/plain'},
+            mime: {"Content-Type": 'text/html'},
             body: body
         });
         callback('Error 404', reqObj);
