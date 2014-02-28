@@ -31,20 +31,8 @@ module.exports = function(grunt) {
 
         var srvClass = require('../server');
         var srv = new srvClass(options, false);
-
-        process.on('SIGINT', function(){
-            process.removeAllListeners('SIGINT');
-            process.removeAllListeners('SIGTERM');
-            srv.stop();
+        srv.exitCallback = function(){
             grunt.log.ok('Server was shutdown at ' + new Date().toJSON());
-            done();
-        });
-        process.on('SIGTERM', function(){
-            process.removeAllListeners('SIGINT');
-            process.removeAllListeners('SIGTERM');
-            srv.stop();
-            grunt.log.ok('Server was shutdown at ' + new Date().toJSON());
-            done();
-        });
+        }
     });
 };

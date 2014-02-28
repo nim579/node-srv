@@ -1,13 +1,13 @@
 var server  = require('./server')
   , program = require('commander')
-  , _		= require('underscore')
-  , root 	= '';
+  , _       = require('underscore')
+  , root    = '';
 
 
 try {
-	root = _.without(JSON.parse(process.env.npm_config_argv).original, 'start', 'node-srv', 'run-script', 'npm')[0];
+    root = _.without(JSON.parse(process.env.npm_config_argv).original, 'start', 'node-srv', 'run-script', 'npm')[0];
 } catch (e) {
-	root = process.cwd();
+    root = process.cwd();
 }
 
 
@@ -21,4 +21,7 @@ program
   .option('--500 [path]', 'Path to 500 error page', null)
   .parse(process.argv);
 
-new server(program);
+var srv = new server(program);
+srv.exitCallback = function(){
+    console.log('Server was shutdown at ' + new Date().toJSON());
+}

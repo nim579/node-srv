@@ -9,32 +9,17 @@ var mime        = require('mime')
 
 var serverClass = (function(){
 
-    function serverClass(options, killer){
+    function serverClass(options){
         this.options = options;
         this.parseLogsPath();
-        var _this = this;
-        var listenKill = ( typeof killer !== 'undefined' ? killer : true );
-
-        if(listenKill){
-            process.on('SIGINT', function(){
-                _this.stop(function(){
-                    process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
-                    process.exit();
-                });
-            });
-            process.on('SIGTERM', function(){
-                _this.stop(function(){
-                    process.stdout.write('Server was shutdown at ' + new Date().toJSON() + '\n');
-                    process.exit();
-                });
-            });
-        }
 
         this.ev = new events();
         this.stack = [];
 
         this.on('request', this.startResponse, this);
         this.on('response', this.startResponse);
+
+        this.bindCloseEvents();
 
         this.startServer();
     }
@@ -57,13 +42,21 @@ var serverClass = (function(){
     }
 
     serverClass.prototype.stop = function(callback){
-        if(this.server != null){
-            this.server.close(function(){
-                if(typeof callback === 'function') callback();
-            });
-        } else {
-            if(typeof callback === 'function') callback();
+        this.stack = [];
+        if(this.server != null) this.server.close();
+    }
+
+    serverClass.prototype.bindCloseEvents = function(){
+        var _this = this;
+        var exit = function(){
+            process.removeAllListeners('SIGINT');
+            process.removeAllListeners('SIGTERM');
+            _this.stop();
+            if(typeof _this.exitCallback === 'function') _this.exitCallback.apply(_this);
+            process.exit();
         }
+        process.on('SIGINT', exit);
+        process.on('SIGTERM', exit);
     }
 
     serverClass.prototype.done = function(callback, context){

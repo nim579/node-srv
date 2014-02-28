@@ -13,4 +13,7 @@ program
   .option('--500 [path]', 'Path to 500 error page', null)
   .parse(process.argv);
 
-new server(program);
+var srv = new server(program);
+srv.exitCallback = function(){
+    console.log('Server was shutdown at ' + new Date().toJSON());
+}
