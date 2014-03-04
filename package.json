@@ -24,7 +24,7 @@
     "commander": "~2.0.0",
     "underscore": "~1.5.2"
   },
-  "peerDependencies": {
+  "devDependencies": {
     "grunt": "~0.4.1"
   },
   "readmeFilename": "README.md",
