@@ -6,11 +6,16 @@ var mime        = require('mime')
   , events      = require('events').EventEmitter
   , _           = require('underscore');
 
+var defaultOptions = {
+    port: 8000,
+    logs: false,
+    index: 'index.html'
+};
 
 var serverClass = (function(){
 
     function serverClass(options){
-        this.options = options;
+        this.options = _.extend(defaultOptions, options);
         this.parseLogsPath();
 
         this.ev = new events();
