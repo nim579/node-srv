@@ -3,13 +3,11 @@ var server  = require('./server')
   , _       = require('underscore')
   , root    = '';
 
-
 try {
     root = _.without(JSON.parse(process.env.npm_config_argv).original, 'start', 'node-srv', 'run-script', 'npm')[0];
 } catch (e) {
     root = process.cwd();
 }
-
 
 program
   .version('0.2.0')
