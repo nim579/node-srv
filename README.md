@@ -26,9 +26,9 @@ var server = require('node-srv');
 
 // Start server
 var nodeSrv = new server({
-	port: 5000,
-	root: '../www/',
-	logs: true
+    port: 5000,
+    root: '../www/',
+    logs: true
 });
 
 //Stop server
@@ -101,3 +101,40 @@ nodeSrv.stop();
   ~~~~~
 
 3. Deploy to heroku and enjoy!
+
+## Add extensions
+
+You can add extensions for handling some types of files.
+
+~~~~~ js
+var srv = require('node-srv');
+
+srv.extendHandlers({
+    MD: {
+        extnames: ['.md', '.markdown'],                     // list of extnames (in lower case)
+        method: function(reqObject, callback){
+            var err = null;
+            try {
+                reqObject.status = 200;                     // set response status
+                reqObject.body = 'This is markdown file'    // set response body
+                mime = {"Content-Type": 'text/html'}        // set response Content-Type
+            } catch (e) {
+                err = e;
+            }
+
+            callback(err, reqObj);                          // if first argument isnt null, server response error with status `500`, else response your content with your status
+        }
+    }
+});
+
+new srv({port: 8000, logs: true, index: 'README.md'});
+~~~~~
+
+### reqObject fields
+* `object` **request** — request onject (from Node.js HTTP module)
+* `object` **response** — response onject (from Node.js HTTP module)
+* `numder` **uid** — unique ID
+* `date` **startTime** — request time
+* `string` **uri** — request URI (if URI folder, in this string added `index` from options). Example, for URL `http://localhost:8000/some/folders/` — `uri: '/some/folders/index.html`
+* `string` **body** — body for response (default empty string)
+* `string` **filename** — full path to requested file
