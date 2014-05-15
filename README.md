@@ -8,17 +8,17 @@ Simple static node.js server. Supports Heroku and Grunt.js
 $ npm install -g node-srv
 ~~~~~
 
-## Use
+## Usage
 
 ~~~~~ bash
 # Start server on port 8000
 $ node-srv
 
-# Start server on port 8001 with writing logs in file *./nodeserver.log*
+# Start server on port 8001 writing logs to *./nodeserver.log* file
 $ node-srv --port 8001 --logs ./nodeserver.log
 ~~~~~
 
-## Use from scripts
+## Scripts usage
 
 ~~~~~ js
 //Require module
@@ -26,9 +26,9 @@ var server = require('node-srv');
 
 // Start server
 var nodeSrv = new server({
-	port: 5000,
-	root: '../www/',
-	logs: true
+    port: 5000,
+    root: '../www/',
+    logs: true
 });
 
 //Stop server
@@ -38,21 +38,20 @@ nodeSrv.stop();
 ## Options
 
 - **-r, --root [path]** — Path, for server root-folder (default *./*)
-- **-p, --port [number]** — Port on which the server is started (default *8000*, or env PORT)
-- **-i, --index [file]** — Sets the index file for opening like default file in directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
-- **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to this file (if path is folder, default filename node-srv.log) 
+- **-p, --port [number]** — Port the server is started on (default *8000*, or env PORT)
+- **-i, --index [file]** — Sets default index file for directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
+- **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log) 
 - **--404 [path]** — Path to 404 error page
 - **--500 [path]** — Path to 500 error page
 
-## Use like [Grunt.js](http://gruntjs.com/) task
-
-1. Install **node-srv** localy
+## Usage as [Grunt.js](http://gruntjs.com/) task
+1. Install **node-srv** locally
 
   ~~~~~ bash
   $ npm install node-srv --save
   ~~~~~
 
-2. Load task into your **Gtuntfile**
+2. Load task into your **Gruntfile**
 
   ~~~~~ js
   grunt.loadTasks('node-srv');
@@ -84,7 +83,7 @@ nodeSrv.stop();
   $ grunt srv:server2
   ~~~~~
 
-## Use for [Heroku](https://heroku.com)
+## Usage with [Heroku](https://heroku.com)
 
 1. Install **node-srv** localy
 
@@ -101,3 +100,39 @@ nodeSrv.stop();
   ~~~~~
 
 3. Deploy to heroku and enjoy!
+
+## Extensions
+
+You can add extensions for handling specific file types.
+
+~~~~~ js
+var srv = require('node-srv');
+
+srv.extendHandlers({
+    extnames: ['.md', '.markdown'],                     // list of extensions (in lower case)
+    method: function(reqObject, callback){
+        var err = null;
+        try {
+            reqObject.status = 200;                     // set response status
+            reqObject.body = 'This is markdown file'    // set response body
+            mime = {"Content-Type": 'text/html'}        // set response Content-Type
+        } catch (e) {
+            err = e;
+        }
+
+        callback(err, reqObj);                          // if first argument is not null, server responds error with status `500`, else responds your content with your status
+    }
+});
+
+new srv({port: 8000, logs: true, index: 'README.md'});
+~~~~~
+You can set one handler or *array* of a few handlers.
+
+### reqObject fields
+* `object` **request** — request onject (from Node.js HTTP module)
+* `object` **response** — response onject (from Node.js HTTP module)
+* `numder` **uid** — unique ID
+* `date` **startTime** — request time
+* `string` **uri** — request URI (if URI folder, in this string added `index` from options). Example, for URL `http://localhost:8000/some/folders/` — `uri: '/some/folders/index.html`
+* `string` **body** — body for response (default empty string)
+* `string` **filename** — full path to requested file
