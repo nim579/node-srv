@@ -44,8 +44,7 @@ nodeSrv.stop();
 - **--404 [path]** — Path to 404 error page
 - **--500 [path]** — Path to 500 error page
 
-## Use like [Grunt.js](http://gruntjs.com/) task
-
+## Usage as [Grunt.js](http://gruntjs.com/) task
 1. Install **node-srv** locally
 
   ~~~~~ bash
@@ -84,7 +83,7 @@ nodeSrv.stop();
   $ grunt srv:server2
   ~~~~~
 
-## Use for [Heroku](https://heroku.com)
+## Usage with [Heroku](https://heroku.com)
 
 1. Install **node-srv** localy
 
@@ -102,7 +101,7 @@ nodeSrv.stop();
 
 3. Deploy to heroku and enjoy!
 
-## Add extensions
+## Extensions
 
 You can add extensions for handling specific file types.
 
