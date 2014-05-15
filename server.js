@@ -216,7 +216,11 @@ var serverClass = (function(){
 
     serverClass.prototype.selectHandler = function(filepath){
         var handler = _.find(this.constructor.fileHandlers, function(handlers){
-            return _.contains(handlers.extnames, path.extname(filepath).toLowerCase());
+            if(_.isArray(handlers.extnames)){
+                return _.contains(handlers.extnames, path.extname(filepath).toLowerCase());
+            } else {
+                return handlers.extnames === path.extname(filepath).toLowerCase()
+            }
         });
         if(handler && handler.method){
             return handler;
