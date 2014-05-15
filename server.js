@@ -230,11 +230,13 @@ var serverClass = (function(){
         }
     }
 
-    serverClass.fileHandlers = {};
+    serverClass.fileHandlers = [];
 
-    serverClass.extendHandlers = function(handlersObj){
-        if(_.isObject(handlersObj)){
-            serverClass.fileHandlers = _.extend(serverClass.fileHandlers, handlersObj);
+    serverClass.extendHandlers = function(handler){
+        if(_.isArray(handler)){
+            serverClass.fileHandlers = _.union(serverClass.fileHandlers, handler);
+        } else if(_.isObject(handler)){
+            serverClass.fileHandlers.push(handler);
         }
         return this;
     }
