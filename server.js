@@ -1,4 +1,5 @@
-var mime        = require('mime')
+var pkg         = require('./package.json')
+  , mime        = require('mime')
   , path        = require('path')
   , http        = require('http')
   , url         = require('url')
@@ -75,7 +76,11 @@ var serverClass = (function(){
     serverClass.prototype.response = function(resObj){
         this.accessLog(resObj);
 
-        resObj.response.writeHead(resObj.status, resObj.mime);
+        var headers = _.extend({
+            "Server": pkg.name + '/' + pkg.version
+        }, resObj.mime);
+        
+        resObj.response.writeHead(resObj.status, headers);
         resObj.response.write(resObj.body, resObj.bodyType != null ? resObj.bodyType : void 0);
         resObj.response.end();
     }
