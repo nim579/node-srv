@@ -109,25 +109,24 @@ You can add extensions for handling specific file types.
 var srv = require('node-srv');
 
 srv.extendHandlers({
-    MD: {
-        extnames: ['.md', '.markdown'],                     // list of extensions (in lower case)
-        method: function(reqObject, callback){
-            var err = null;
-            try {
-                reqObject.status = 200;                     // set response status
-                reqObject.body = 'This is markdown file'    // set response body
-                mime = {"Content-Type": 'text/html'}        // set response Content-Type
-            } catch (e) {
-                err = e;
-            }
-
-            callback(err, reqObj);                          // if first argument is not null, server responds error with status `500`, else responds your content with your status
+    extnames: ['.md', '.markdown'],                     // list of extensions (in lower case)
+    method: function(reqObject, callback){
+        var err = null;
+        try {
+            reqObject.status = 200;                     // set response status
+            reqObject.body = 'This is markdown file'    // set response body
+            mime = {"Content-Type": 'text/html'}        // set response Content-Type
+        } catch (e) {
+            err = e;
         }
+
+        callback(err, reqObj);                          // if first argument is not null, server responds error with status `500`, else responds your content with your status
     }
 });
 
 new srv({port: 8000, logs: true, index: 'README.md'});
 ~~~~~
+You can set one handler or *array* of a few handlers.
 
 ### reqObject fields
 * `object` **request** — request onject (from Node.js HTTP module)
