@@ -81,7 +81,7 @@ var serverClass = (function(){
     }
 
     serverClass.prototype.addRequest = function(req, res){
-        reqObj = {
+        var reqObj = {
             request: req,
             response: res,
             uid: Math.floor(Math.random()*10000000),
@@ -104,9 +104,33 @@ var serverClass = (function(){
             var reqObj = this.stack[0];
             this.stack = _.without(this.stack, reqObj);
 
-            this.responseStatic(reqObj, function(err, resObj){
+            this.responseFile(reqObj, function(err, resObj){
                 _this.response(resObj);
             });
+        }
+    }
+
+    serverClass.prototype.responseFile = function(reqObj, callback){
+        var _this = this;
+        var filePath = reqObj.filename;
+
+        var handlerCallback = function(err, requestObj){
+            if(err){
+                 _this.response500(reqObj, err, callback);
+                return false;
+            }
+            callback(null, requestObj);
+        }
+
+        if(fs.existsSync(filePath)){
+            var handler;
+            if(handler = this.selectHandler(filePath)){
+                handler.method(reqObj, handlerCallback);
+            } else {
+                this.responseStatic(reqObj, handlerCallback);
+            }
+        } else {
+            this.response404(reqObj, callback);
         }
     }
 
@@ -114,23 +138,19 @@ var serverClass = (function(){
         var _this = this;
         var filePath = reqObj.filename;
 
-        if(fs.existsSync(filePath)){
-            reqObj.mime = {"Content-Type": mime.lookup(filePath)};
-            reqObj.status = 200;
-            fs.readFile(filePath, "binary", function(err, file){
-                if(err){
-                    _this.response500(err, callback);
-                    this.errorLog(reqObj, 'Error 500: '+JSON.stringify(err));
-                    return false;
-                }
-                reqObj.body = file;
-                reqObj.bodyType = "binary";
+        reqObj.mime = {"Content-Type": mime.lookup(filePath)};
+        reqObj.status = 200;
+        fs.readFile(filePath, "binary", function(err, file){
+            if(err){
+                _this.response500(reqObj, err, callback);
+                this.errorLog(reqObj, 'Error 500: '+JSON.stringify(err));
+                return false;
+            }
+            reqObj.body = file;
+            reqObj.bodyType = "binary";
 
-                callback(null, reqObj);
-            });
-        } else {
-            this.response404(callback);
-        }
+            callback(null, reqObj);
+        });
     }
 
     serverClass.prototype.response500 = function(reqObj, e, callback){
@@ -148,7 +168,7 @@ var serverClass = (function(){
         callback('Error 500', reqObj);
     }
 
-    serverClass.prototype.response404 = function(callback){
+    serverClass.prototype.response404 = function(reqObj, callback){
         body = 'Error 404. ' + http.STATUS_CODES['404'];
 
         if(fs.existsSync(this.options['404'])){
@@ -197,6 +217,48 @@ var serverClass = (function(){
             "Error: " + error + "  " + 
             path.join(resObj.request.headers.host, resObj.uri) + "  Status code: " + resObj.status + "  (" + resObj.request.headers['user-agent'] + ") \n"
         );
+    }
+
+    serverClass.prototype.selectHandler = function(filepath){
+        var handler = _.find(this.constructor.fileHandlers, function(handlers){
+            return _.contains(handlers.extnames, path.extname(filepath).toLowerCase());
+        });
+        if(handler && handler.method){
+            return handler;
+        } else {
+            return false;
+        }
+    }
+
+    serverClass.fileHandlers = {};
+
+    serverClass.extendHandlers = function(handlersObj){
+        if(_.isObject(handlersObj)){
+            serverClass.fileHandlers = _.extend(serverClass.fileHandlers, handlersObj);
+        }
+        return this;
+    }
+
+    serverClass.extend = function(protoProps){
+        var parent = this;
+        var child;
+
+        if (protoProps && _.has(protoProps, 'constructor')) {
+            child = protoProps.constructor;
+        } else {
+            child = function(){ return parent.apply(this, arguments); };
+        }
+
+        _.extend(child, parent);
+
+        var Surrogate = function(){ this.constructor = child; };
+        Surrogate.prototype = parent.prototype;
+        child.prototype = new Surrogate;
+
+        if (protoProps) _.extend(child.prototype, protoProps);
+
+        child.__super__ = parent.prototype;
+        return child;
     }
 
     return serverClass;
