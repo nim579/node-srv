@@ -136,3 +136,18 @@ You can set one handler or *array* of a few handlers.
 * `string` **uri** — request URI (if URI folder, in this string added `index` from options). Example, for URL `http://localhost:8000/some/folders/` — `uri: '/some/folders/index.html`
 * `string` **body** — body for response (default empty string)
 * `string` **filename** — full path to requested file
+
+## Extending server
+You can extend server class (like [Backbone Model](http://backbonejs.org/#Model-extend)).
+
+Use cunstructor function **extend(properties, [classProperties])**.
+
+~~~~~ js
+var srv = require('node-srv');
+
+module.exports = srv.extend({
+    accessLog = function(resObj){
+        console.log(JSON.stringify(resObj));
+    }
+});
+~~~~~

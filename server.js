@@ -250,7 +250,7 @@ var serverClass = (function(){
         return this;
     }
 
-    serverClass.extend = function(protoProps){
+    serverClass.extend = function(protoProps, staticProps){
         var parent = this;
         var child;
 
@@ -260,15 +260,9 @@ var serverClass = (function(){
             child = function(){ return parent.apply(this, arguments); };
         }
 
-        _.extend(child, parent);
+        _.extend(child, parent, staticProps);
+        _.extend(child.prototype, parent.prototype, protoProps);
 
-        var Surrogate = function(){ this.constructor = child; };
-        Surrogate.prototype = parent.prototype;
-        child.prototype = new Surrogate;
-
-        if (protoProps) _.extend(child.prototype, protoProps);
-
-        child.__super__ = parent.prototype;
         return child;
     }
 
