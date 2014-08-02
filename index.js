@@ -10,7 +10,7 @@ try {
 }
 
 program
-  .version('1.0.2')
+  .version('1.0.3')
   .option('-p, --port [number]', 'Sets port on which the server will work', process.env.PORT || '8000')
   .option('-r, --root [path]', 'Sets the root from which the server will run', root)
   .option('-i, --index [file]', 'Sets the index file for opening like default file in directories', 'index.html')

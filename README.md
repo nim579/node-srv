@@ -151,3 +151,15 @@ module.exports = srv.extend({
     }
 });
 ~~~~~
+
+If you want to change server name, extend properties `name` and `version`.
+
+Example for **gfm-srv**
+~~~~~ js
+var srv = require('node-srv');
+
+module.exports = srv.extend({
+    name: "gfm-srv",
+    version: "2.0.1"
+});
+~~~~~

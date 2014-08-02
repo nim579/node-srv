@@ -30,6 +30,9 @@ var serverClass = (function(){
         this.startServer();
     }
 
+    serverClass.prototype.name = pkg.name;
+    serverClass.prototype.version = pkg.version;
+
     serverClass.prototype.on = function(event, foo, context){
         var _this = this;
         this.ev.on(event, function(){
@@ -77,7 +80,7 @@ var serverClass = (function(){
         this.accessLog(resObj);
 
         var headers = _.extend({
-            "Server": pkg.name + '/' + pkg.version
+            "Server": this.name + '/' + this.version
         }, resObj.mime);
         
         resObj.response.writeHead(resObj.status, headers);
