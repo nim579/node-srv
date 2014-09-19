@@ -94,7 +94,7 @@ var serverClass = (function(){
             response: res,
             uid: Math.floor(Math.random()*10000000),
             startTime: new Date(),
-            uri: url.parse(req.url).pathname.replace(/^\//, '').replace(/\/$/, '/'+this.options.index),
+            uri: decodeURI(url.parse(req.url).pathname.replace(/^\//, '').replace(/\/$/, '/'+this.options.index)),
             body: ''
         }
         if(reqObj.uri.length === 0){

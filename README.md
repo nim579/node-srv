@@ -146,7 +146,7 @@ Use cunstructor function **extend(properties, [classProperties])**.
 var srv = require('node-srv');
 
 module.exports = srv.extend({
-    accessLog = function(resObj){
+    accessLog: function(resObj){
         console.log(JSON.stringify(resObj));
     }
 });
