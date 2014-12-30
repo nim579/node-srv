@@ -25,9 +25,9 @@
     "underscore": "~1.5.2"
   },
   "devDependencies": {
-    "grunt": "~0.4.1"
+    "grunt": "^0.4.5",
+    "grunt-contrib-coffee": "^0.12.0"
   },
   "readmeFilename": "README.md",
-  "devDependencies": {},
   "gitHead": "fc8d88100d95e57e5e45692f30fdd6e83a33609f"
 }
