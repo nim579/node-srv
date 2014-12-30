@@ -24,7 +24,7 @@ module.exports = function(grunt) {
 
         }, this.data);
 
-        var srvClass = require('../server');
+        var srvClass = require('../lib/server');
         var srv = new srvClass(options, false);
         srv.exitCallback = function(){
             grunt.log.ok('Server was shutdown at ' + new Date().toJSON());

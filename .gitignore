@@ -1,4 +1,16 @@
-/node_modules/
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+node_modules
+
 .DS_Store
-npm-debug.log
-/*.js
+/lib/

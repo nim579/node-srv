@@ -1,17 +1,17 @@
 module.exports = (grunt)->
-    grunt.initConfig
-    	coffee:
-    		app:
-    			options:
-    				bare: true
 
-    			files: [
+    grunt.initConfig
+        coffee:
+            app:
+                options:
+                    bare: true
+
+                files: [
                     expand: true
-                    cwd: './'
-                    src: ['./!(Gruntfile|grunt)*.coffee']
-                    dest: './'
+                    cwd: './src/'
+                    src: ['**/*.coffee']
+                    dest: './lib/'
                     ext: '.js'
-                    extDot: 'last'
                 ]
 
     grunt.loadNpmTasks 'grunt-contrib-coffee'

@@ -1,4 +1,4 @@
-pkg    = require './package.json'
+pkg    = require '../package.json'
 mime   = require 'mime'
 path   = require 'path'
 http   = require 'http'
