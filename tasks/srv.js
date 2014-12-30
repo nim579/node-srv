@@ -1,20 +1,15 @@
 /*
- * grunt-node-srv
- * https://github.com/nim579/grunt-node-srv
+ * Grunt.js task "node-srv"
+ * https://github.com/nim579/node-srv
  *
- * Copyright (c) 2013 Nick Iv
+ * Copyright (c) 2014 Nick Iv
  * Licensed under the MIT license.
  */
 
 'use strict';
 
 module.exports = function(grunt) {
-
-  // Please see the Grunt documentation for more information regarding task
-  // creation: http://gruntjs.com/creating-tasks
-
     grunt.registerMultiTask('srv', 'Simple server for Grunt.js', function() {
-    // Merge task-specific and/or target-specific options with these defaults.
         var done = this.async();
 
         var _ = require('underscore');
