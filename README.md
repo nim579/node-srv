@@ -39,6 +39,7 @@ nodeSrv.stop();
 
 - **-r, --root [path]** — Path, for server root-folder (default *./*)
 - **-p, --port [number]** — Port the server is started on (default *8000*, or env PORT)
+- **-h, --host [host]** — Host or ip address on which the server will work (any host by default)
 - **-i, --index [file]** — Sets default index file for directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
 - **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log) 
 - **--404 [path]** — Path to 404 error page
