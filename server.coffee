@@ -10,6 +10,7 @@ _      = require 'underscore'
 
 defaultOptions =
     port: 8000
+    host: undefined
     logs: false
     index: 'index.html'
 
@@ -40,7 +41,7 @@ class serverClass
         @server = http.createServer (request, response)=>
             @addRequest request, response
 
-        @server.listen Number @options.port
+        @server.listen Number(@options.port), @options.host
         process.stdout.write "Node.js server running at\n => http://localhost:#{@options.port}/\n"
 
     stop: (callback)->
@@ -244,4 +245,4 @@ serverClass.extend = (protoProps, staticProps)->
     return child
 
 
-module.exports = serverClass;
+module.exports = serverClass
