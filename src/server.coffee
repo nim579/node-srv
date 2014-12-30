@@ -111,7 +111,7 @@ class serverClass
 
         if fs.existsSync filePath
             if handler = @selectHandler filePath
-                handler.method reqObj, handlerCallback
+                handler.method.call @, reqObj, handlerCallback
 
             else
                 @responseStatic reqObj, handlerCallback
