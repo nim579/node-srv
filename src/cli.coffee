@@ -18,8 +18,19 @@ program.version pkg.version
     .option '-l, --logs [path/boolean]', 'Logs writing flag', false
     .option '--404 [path]', 'Path to 404 error page', null
     .option '--500 [path]', 'Path to 500 error page', null
-    .parse process.argv
 
-srv = new server program
-srv.exitCallback = ->
-    console.log 'Server was shutdown at ' + new Date().toJSON()
+cliExtend =
+    __program: program
+    extendCliOptions: (options)->
+        if _.isArray options
+            if _.isArray options[0]
+                for option in options
+                    @__program.option.apply @__program, option
+
+            else
+                @__program.option.apply @__program, options
+
+    getCommander: ->
+        @__program
+
+module.exports = cliExtend

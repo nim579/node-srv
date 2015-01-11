@@ -6,6 +6,7 @@ url    = require 'url'
 fs     = require 'fs'
 events = require('events').EventEmitter
 _      = require 'underscore'
+cli    = require './cli'
 
 
 defaultOptions =
@@ -243,6 +244,9 @@ serverClass.extend = (protoProps, staticProps)->
     _.extend child.prototype, parent.prototype, protoProps
 
     return child
+
+
+serverClass = _.extend serverClass, cli
 
 
 module.exports = serverClass
