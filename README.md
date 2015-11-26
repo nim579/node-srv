@@ -41,7 +41,7 @@ nodeSrv.stop();
 - **-p, --port [number]** — Port the server is started on (default *8000*, or env PORT)
 - **-h, --host [host]** — Host or ip address on which the server will work (any host by default)
 - **-i, --index [file]** — Sets default index file for directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
-- **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log) 
+- **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log)
 - **--404 [path]** — Path to 404 error page
 - **--500 [path]** — Path to 500 error page
 
@@ -67,7 +67,8 @@ nodeSrv.stop();
       server1: {
         port: 4001,
         '404': './404.html'
-        index: 'index.htm'
+        index: 'index.htm',
+        keepalive: false
       },
       server2: {
         port: 4002,
@@ -94,7 +95,7 @@ nodeSrv.stop();
 
 2. Make [Procfile](https://devcenter.heroku.com/articles/getting-started-with-nodejs#declare-process-types-with-procfile)
 
-  You can use root, logs, 404 500 arguments 
+  You can use root, logs, 404 500 arguments
 
   ~~~~~ bash
   web: node node_modules/node-srv/index --logs --404 404.html

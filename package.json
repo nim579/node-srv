@@ -1,6 +1,6 @@
 {
   "name": "node-srv",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Simple static node.js server",
   "main": "lib/server.js",
   "bin": {

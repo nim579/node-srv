@@ -20,14 +20,18 @@ module.exports = function(grunt) {
             index: 'index.html',
             logs: false,
             '404': null,
-            '500': null
-
+            '500': null,
+            keepalive: true
         }, this.data);
 
         var srvClass = require('../lib/server');
         var srv = new srvClass(options, false);
         srv.exitCallback = function(){
             grunt.log.ok('Server was shutdown at ' + new Date().toJSON());
+        }
+
+        if(!options.keepalive){
+            done();
         }
     });
 };
