@@ -17,7 +17,7 @@ defaultOptions =
 
 class serverClass
     constructor: (options)->
-        @options = _.extend defaultOptions, options
+        @options = _.extend {}, defaultOptions, options
         @parseLogsPath()
 
         @ev = new events()
@@ -70,7 +70,7 @@ class serverClass
         @accessLog resObj
 
         headers = _.extend "Server": @name + '/' + @version, resObj.mime
-        
+
         resObj.response.writeHead resObj.status, headers
         resObj.response.write resObj.body, if resObj.bodyType? then resObj.bodyType
         resObj.response.end();
@@ -84,7 +84,7 @@ class serverClass
             uri: decodeURI url.parse(req.url).pathname.replace(/^\//, '').replace(/\/$/, '/'+@options.index)
             body: ''
 
-        
+
         reqObj.uri = @options.index if reqObj.uri.length is 0
         reqObj.filename = path.resolve process.cwd(),  @options.root or '', reqObj.uri
 
