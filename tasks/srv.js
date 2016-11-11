@@ -24,11 +24,13 @@ module.exports = function(grunt) {
             keepalive: true
         }, this.data);
 
-        var srvClass = require('../lib/server');
-        var srv = new srvClass(options, false);
-        srv.exitCallback = function(){
+        var Server = require('../lib/server');
+
+        var srv = new Server(options, function(){
             grunt.log.ok('Server was shutdown at ' + new Date().toJSON());
-        }
+        });
+
+        grunt.log.ok "node-srv server running at\n => http://localhost:#{options.port}/\n"
 
         if(!options.keepalive){
             done();

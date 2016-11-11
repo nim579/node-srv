@@ -1,248 +1,181 @@
-pkg    = require '../package.json'
-mime   = require 'mime'
-path   = require 'path'
-http   = require 'http'
-url    = require 'url'
-fs     = require 'fs'
-events = require('events').EventEmitter
-_      = require 'underscore'
+pkg       = require '../package.json'
+fs        = require 'fs'
+_         = require 'underscore'
+mime      = require 'mime'
+http      = require 'http'
+url       = require 'url'
+path      = require 'path'
+minimatch = require 'minimatch'
 
 
-defaultOptions =
-    port: 8000
-    host: undefined
-    logs: false
-    index: 'index.html'
-
-
-class serverClass
-    constructor: (options)->
-        @options = _.extend {}, defaultOptions, options
-        @parseLogsPath()
-
-        @ev = new events()
-        @stack = []
-
-        @on 'request', @startResponse, @
-        @on 'response', @startResponse
-
-        @bindCloseEvents()
-
-        @startServer()
-
+class Server
     name: pkg.name
     version: pkg.version
 
-    on:(event, foo, context)->
-        @ev.on event, =>
-            foo.apply context or @, arguments
+    defaults: ->
+        port: 8000
+        host: '0.0.0.0'
+        logs: false
+        index: 'index.html'
 
-    startServer: ()->
-        @server = http.createServer (request, response)=>
-            @addRequest request, response
+    constructor: (options={}, @exitCallback)->
+        @options = _.extend @defaults(), options
 
-        @server.listen Number(@options.port), @options.host
-        process.stdout.write "Node.js server running at\n => http://localhost:#{@options.port}/\n"
+        @_initLogs()
+        @_bindCloseEvents()
+
+        @start()
+
+    start: ->
+        @server = http
+        .createServer _.bind(@request, @)
+        .listen Number(@options.port), @options.host
 
     stop: (callback)->
-        @stack = []
-        @server.close() if @server?
+        @server?.close()
+        @_loger?.end()
 
-    bindCloseEvents: ()->
+        @exitCallback?()
+        callback?()
+
+    _bindCloseEvents: ->
         exit = =>
             process.removeAllListeners 'SIGINT'
             process.removeAllListeners 'SIGTERM'
-            @stop()
 
-            @exitCallback.apply @ if typeof @exitCallback is 'function'
-
-            process.exit()
+            @stop -> process.exit()
 
         process.on 'SIGINT', exit
         process.on 'SIGTERM', exit
 
-    done: (callback, context)->
-        if typeof callback is 'function'
-            @resolve = ->
-                callback.apply context or @, arguments
-
-    response: (resObj)->
-        @accessLog resObj
-
-        headers = _.extend "Server": @name + '/' + @version, resObj.mime
-
-        resObj.response.writeHead resObj.status, headers
-        resObj.response.write resObj.body, if resObj.bodyType? then resObj.bodyType
-        resObj.response.end();
-
-    addRequest: (req, res)->
-        reqObj =
-            request: req
-            response: res
-            uid: Math.floor Math.random()*10000000
-            startTime: new Date()
-            uri: decodeURI url.parse(req.url).pathname.replace(/^\//, '').replace(/\/$/, '/'+@options.index)
-            body: ''
-
-
-        reqObj.uri = @options.index if reqObj.uri.length is 0
-        reqObj.filename = path.resolve process.cwd(),  @options.root or '', reqObj.uri
-
-        @stack.push reqObj
-        @ev.emit 'request'
-
-    startResponse: ()->
-        if @stack.length > 0
-            reqObj = @stack[0]
-            @stack = _.without @stack, reqObj
-
-            @responseFile reqObj, (err, resObj)=>
-                @response resObj
-
-    responseFile: (reqObj, callback)->
-        filePath = reqObj.filename
-
-        handlerCallback = (err, requestObj)=>
-            if err
-                @response500 reqObj, err, callback
-                return false
-
-            callback null, requestObj
-
-        if fs.existsSync filePath
-            if handler = @selectHandler filePath
-                handler.method.call @, reqObj, handlerCallback
-
-            else
-                @responseStatic reqObj, handlerCallback
-
-        else
-            @response404 reqObj, callback
-
-    responseStatic: (reqObj, callback)->
-        filePath = reqObj.filename
-
-        reqObj.mime =  "Content-Type": mime.lookup(filePath)
-        reqObj.status = 200
-        fs.readFile filePath, "binary", (err, file)=>
-            if err
-                @response500 reqObj, err, callback
-                @errorLog reqObj, 'Error 500: ' + JSON.stringify err
-                return false;
-
-            reqObj.body = file
-            reqObj.bodyType = "binary"
-
-            callback null, reqObj
-
-    response500: (reqObj, e, callback)->
-        body = "Error 500. #{http.STATUS_CODES['500']}. #{JSON.stringify(e)}"
-
-        if fs.existsSync @options['500']
-            body = fs.readFileSync @options['500']
-
-        reqObj = _.extend reqObj,
-            status: 500
-            mime: "Content-Type": 'text/html'
-            body: body
-
-        callback 'Error 500', reqObj
-
-    response404: (reqObj, callback)->
-        body = "Error 404. #{http.STATUS_CODES['404']}"
-
-        if fs.existsSync @options['404']
-            body = fs.readFileSync @options['404']
-
-        reqObj = _.extend reqObj,
-            status: 404
-            mime: "Content-Type": 'text/html'
-            body: body
-
-        callback 'Error 404', reqObj
-
-    writeLog: (message)->
+    _initLogs: ->
         if @options.logs
             if typeof @options.logs is 'string'
-                fs.appendFileSync @options.logs, message
+                @_logger = fs.createWriteStream @options.logs, flags: 'a'
 
             else
-                process.stdout.write message
+                @_log = console.log
 
-    parseLogsPath: ()->
-        if typeof @options.logs is 'string'
-            logPath = path.resolve process.cwd(), @options.logs or ''
+    request: (req, res)->
+        time = new Date()
+        filePath = null
 
-            if fs.existsSync logPath
-                logPath = path.join logPath, 'node-srv.log' if fs.statSync(logPath).isDirectory()
+        new Promise (resolve, reject)=>
+            uri = url.parse req.url
+            resolve uri.pathname
 
-            @options.logs = logPath
+        .then (pathname)=>
+            filePath = pathname
+            filePath = filePath.replace /\/$/, "/#{@options.index}"
+            filePath = filePath.replace /^\//, ""
+            filePath = path.resolve process.cwd(), @options.root or './', filePath
 
-    accessLog: (resObj)->
-        data =
-            date: resObj.startTime.toJSON()
-            time: new Date() - resObj.startTime
-            path: path.join(resObj.request.headers.host, resObj.uri)
-            filename: resObj.filename
-            code: resObj.status
-            ua: resObj.request.headers['user-agent']
+            return @processRequest res, filePath
 
-        tmpl = _.template "[<%= date %>]  (+<%= time %>ms):  <%= path %>  — (<%= filename %>)  Status code: <%= code %> (<%= ua %>)\n"
+        , (err)=>
+            return @errorCode res, 400, "Message: #{err.message}\nURL: #{req.url}\n\n#{err.stack}"
 
-        @writeLog tmpl data
-
-    errorLog: (resObj, error)->
-        data =
-            date: resObj.startTime.toJSON()
-            time: new Date() - resObj.startTime
-            error: error
-            path: path.join(resObj.request.headers.host, resObj.uri)
-            code: resObj.status
-            ua: resObj.request.headers['user-agent']
-
-        tmpl = _.template "[<%= date %>]  (+<%= time %>ms):  Error: <%= error %>  <%= path %>  Status code: <%= code %> (<%= ua %>)\n"
-
-        @writeLog tmpl data
-
-    selectHandler: (filepath)->
-        handler = _.find @constructor.fileHandlers, (handlers)->
-            if _.isArray handlers.extnames
-                return _.contains handlers.extnames, path.extname(filepath).toLowerCase()
+        .catch (err)=>
+            if err.code is 'ENOENT'
+                return @handlerNotFound res, err.path
 
             else
-                return handlers.extnames is path.extname(filepath).toLowerCase()
+                @log "[#{time.toJSON()}] Error: #{err.message}, Code: #{err.code}"
+                return @errorCode res, 500, "Message: #{err.message}\nCode: #{err.code}\n\n#{err.stack}"
 
-        if handler and handler.method
-            return handler
+        .catch (err)=>
+            @log "[#{time.toJSON()}] Error: #{err.message}"
+            return @errorCode res, 500, "Message: #{err.message}\nCode: #{err.code}\n\n#{err.stack}"
+
+        .then (code)=>
+            host = path.join req.headers.host or 'localhost:'+@options.port, req.url
+
+            log  = "[#{time.toJSON()}]"
+            log += " (+#{Date.now() - time}ms):"
+            log += " #{code}"
+            log += " #{host}"
+            log += " - #{filePath}" if filePath
+            log += " (#{req.headers['user-agent']})" if req.headers['user-agent']
+
+            @log log
+
+    getHeaders: (filePath)->
+        headers = "Server": "#{@name}/#{@version}"
+        headers["Content-Type"] = mime.lookup filePath if filePath
+        return headers
+
+    processRequest: (res, filePath)->
+        if handler = @handle filePath
+            return handler.call @ res, filePath
 
         else
-            return false
+            return @handlerStaticFile res, filePath
+
+    handle: (filePath)->
+        handlers = _.result @, 'handlers'
+
+        for pattern of handlers
+            if minimatch filePath, pattern
+                return handlers[pattern]
+
+        return null
+
+    handlers: -> {}
+
+    handlerStaticFile: (res, filePath)->
+        server = @
+
+        new Promise (resolve, reject)->
+            fs.createReadStream filePath
+            .on 'open', ->
+                res.writeHead 200, server.getHeaders filePath
+
+            .on 'error', (err)->
+                reject err
+
+            .on 'data', (data)->
+                res.write data
+
+            .on 'end', ->
+                res.end()
+                resolve 200
+
+    handlerNotFound: (res, filePath)->
+        notFound = =>
+            return @errorCode res, 404, "Path: #{filePath}"
+
+        unless @options['404']
+            return notFound()
+
+        errorPath = path.resolve process.cwd(), @options['404']
+
+        new Promise (resolve, reject)=>
+            fs.createReadStream errorPath
+            .on 'open', ->
+                res.writeHead 404, _.extend @getHeaders(), "Content-Type": "text/html"
+
+            .on 'error', (err)->
+                reject err
+
+            .on 'data', (data)->
+                res.write data
+
+            .on 'end', ->
+                res.end()
+                resolve 404
+
+    errorCode: (res, code, text='')->
+        text = "<pre>#{text}</pre>" if text
+
+        res.writeHead code, _.extend @getHeaders(), "Content-Type": "text/html"
+        res.write "<h1>#{code} #{http.STATUS_CODES[code]}</h1>" + text
+        res.end()
+
+        return code
+
+    log: (string)->
+        @_logger?.write string + '\n'
+        @_log? string
 
 
-serverClass.fileHandlers = []
-
-serverClass.extendHandlers = (handler)->
-    if _.isArray handler
-        serverClass.fileHandlers = _.union serverClass.fileHandlers, handler
-
-    else if _.isObject handler
-        serverClass.fileHandlers.push handler
-
-    return @
-
-serverClass.extend = (protoProps, staticProps)->
-    parent = @
-
-    if  protoProps and _.has protoProps, 'constructor'
-        child = protoProps.constructor
-
-    else
-        child = -> return parent.apply @, arguments
-
-    _.extend child, parent, staticProps
-    _.extend child.prototype, parent.prototype, protoProps
-
-    return child
-
-
-module.exports = serverClass
+module.exports = Server

@@ -2,32 +2,43 @@
   "name": "node-srv",
   "version": "1.2.6",
   "description": "Simple static node.js server",
+  "readmeFilename": "README.md",
+  "author": "Nick Iv",
+  "homepage": "https://github.com/nim579/node-srv",
+  "bugs": "https://github.com/nim579/node-srv/issues",
+  "license": "MIT",
   "main": "lib/server.js",
-  "bin": {
-    "node-srv": "./bin/node-srv"
-  },
-  "scripts": {
-    "start": "node index.js --logs"
-  },
+  "keywords": [
+    "http-server",
+    "static",
+    "http",
+    "development",
+    "tools",
+    "server",
+    "utils",
+    "cli"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/nim579/node-srv.git"
   },
-  "keywords": [
-    "node.js",
-    "http-server"
-  ],
-  "author": "Nick Iv (nim579)",
-  "license": "MIT",
+  "engines": {
+    "node": ">=0.12.17"
+  },
+  "bin": {
+    "node-srv": "./bin/node-srv"
+  },
+  "scripts": {
+    "prepublish": "rm -rf lib/ && exec $(npm bin)/coffee -c -o lib/ src/",
+    "start": "node index.js --logs"
+  },
   "dependencies": {
-    "mime": "~1.2.11",
-    "commander": "~2.0.0",
-    "underscore": "~1.5.2"
+    "commander": "^2.9.0",
+    "mime": "^1.3.4",
+    "minimatch": "^3.0.3",
+    "underscore": "^1.8.3"
   },
   "devDependencies": {
-    "grunt": "^0.4.5",
-    "grunt-contrib-coffee": "^0.12.0"
-  },
-  "readmeFilename": "README.md",
-  "gitHead": "fc8d88100d95e57e5e45692f30fdd6e83a33609f"
+    "coffee-script": "^1.11.1"
+  }
 }

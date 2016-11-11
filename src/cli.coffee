@@ -17,9 +17,9 @@ program.version pkg.version
     .option '-i, --index [file]', 'Sets the index file for opening like default file in directories', 'index.html'
     .option '-l, --logs [path/boolean]', 'Logs writing flag', false
     .option '--404 [path]', 'Path to 404 error page', null
-    .option '--500 [path]', 'Path to 500 error page', null
     .parse process.argv
 
-srv = new server program
-srv.exitCallback = ->
+srv = new server program, ->
     console.log 'Server was shutdown at ' + new Date().toJSON()
+
+console.log "node-srv server running at\n => http://localhost:#{program.port}/\n"
