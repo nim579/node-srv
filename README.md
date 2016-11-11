@@ -43,7 +43,6 @@ nodeSrv.stop();
 - **-i, --index [file]** — Sets default index file for directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
 - **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log)
 - **--404 [path]** — Path to 404 error page
-- **--500 [path]** — Path to 500 error page
 
 ## Usage as [Grunt.js](http://gruntjs.com/) task
 1. Install **node-srv** locally
@@ -95,7 +94,7 @@ nodeSrv.stop();
 
 2. Make [Procfile](https://devcenter.heroku.com/articles/getting-started-with-nodejs#declare-process-types-with-procfile)
 
-  You can use root, logs, 404 500 arguments
+  You can use root, logs, 404 arguments
 
   ~~~~~ bash
   web: node node_modules/node-srv/index --logs --404 404.html
