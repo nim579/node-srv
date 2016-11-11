@@ -1,166 +1,169 @@
-Node-srv [![](https://badge.fury.io/js/node-srv.png)](https://npmjs.org/package/node-srv)
-========
+# Node-srv [![](https://badge.fury.io/js/node-srv.png)](https://npmjs.org/package/node-srv)
 Simple static node.js server. Supports Heroku and Grunt.js
 
 ## Install
 
-~~~~~ bash
+``` bash
 $ npm install -g node-srv
-~~~~~
+```
 
 ## Usage
 
-~~~~~ bash
+``` bash
 # Start server on port 8000
 $ node-srv
 
 # Start server on port 8001 writing logs to *./nodeserver.log* file
 $ node-srv --port 8001 --logs ./nodeserver.log
-~~~~~
+```
 
 ## Scripts usage
 
-~~~~~ js
+``` js
 //Require module
 var server = require('node-srv');
 
 // Start server
-var nodeSrv = new server({
+var srv = new Server({
     port: 5000,
     root: '../www/',
     logs: true
 });
 
 //Stop server
-nodeSrv.stop();
-~~~~~
+srv.stop();
+```
 
 ## Options
 
-- **-r, --root [path]** — Path, for server root-folder (default *./*)
-- **-p, --port [number]** — Port the server is started on (default *8000*, or env PORT)
-- **-h, --host [host]** — Host or ip address on which the server will work (any host by default)
-- **-i, --index [file]** — Sets default index file for directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
-- **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log)
-- **--404 [path]** — Path to 404 error page
+* **-r, --root [path]** — Path, for server root-folder (default *./*)
+* **-p, --port [number]** — Port the server is started on (default *8000*, or env PORT)
+* **-h, --host [host]** — Host or ip address on which the server will work (any host by default)
+* **-i, --index [file]** — Sets default index file for directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
+* **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log)
+* **--404 [path]** — Path to 404 error page
 
 ## Usage as [Grunt.js](http://gruntjs.com/) task
 1. Install **node-srv** locally
 
-  ~~~~~ bash
+  ``` bash
   $ npm install node-srv --save
-  ~~~~~
+  ```
 
 2. Load task into your **Gruntfile**
 
-  ~~~~~ js
+  ``` js
   grunt.loadTasks('node-srv');
-  ~~~~~
+  ```
 
 3. Configure as multitask
 
-  ~~~~~ js
+  ``` js
   grunt.initConfig({
-
-    srv: {
-      server1: {
-        port: 4001,
-        '404': './404.html'
-        index: 'index.htm',
-        keepalive: false
-      },
-      server2: {
-        port: 4002,
-        logs: true
-      },
-    }
-
+      srv: {
+          server1: {
+              port: 4001,
+              '404': './404.html'
+              index: 'index.htm',
+              keepalive: false
+          },
+          server2: {
+              port: 4002,
+              logs: true
+          },
+      }
   });
-  ~~~~~
+  ```
 
 4. Run task
 
-  ~~~~~ bash
+  ``` bash
   $ grunt srv:server2
-  ~~~~~
+  ```
 
 ## Usage with [Heroku](https://heroku.com)
 
 1. Install **node-srv** localy
 
-  ~~~~~ bash
+  ``` bash
   $ npm install node-srv --save
-  ~~~~~
+  ```
 
-2. Make [Procfile](https://devcenter.heroku.com/articles/getting-started-with-nodejs#declare-process-types-with-procfile)
+2. Make [Procfile](https://devcenter.heroku.com/articles/getting-started-with-nodejs#define-a-procfile)
 
   You can use root, logs, 404 arguments
 
-  ~~~~~ bash
-  web: node node_modules/node-srv/index --logs --404 404.html
-  ~~~~~
+  ```
+  web: node node_modules/node-srv/ --logs --404 404.html
+  ```
 
 3. Deploy to heroku and enjoy!
 
-## Extensions
-
-You can add extensions for handling specific file types.
-
-~~~~~ js
-var srv = require('node-srv');
-
-srv.extendHandlers({
-    extnames: ['.md', '.markdown'],                     // list of extensions (in lower case)
-    method: function(reqObject, callback){
-        var err = null;
-        try {
-            reqObject.status = 200;                     // set response status
-            reqObject.body = 'This is markdown file'    // set response body
-            mime = {"Content-Type": 'text/html'}        // set response Content-Type
-        } catch (e) {
-            err = e;
-        }
-
-        callback(err, reqObj);                          // if first argument is not null, server responds error with status `500`, else responds your content with your status
-    }
-});
-
-new srv({port: 8000, logs: true, index: 'README.md'});
-~~~~~
-You can set one handler or *array* of a few handlers.
-
-### reqObject fields
-* `object` **request** — request onject (from Node.js HTTP module)
-* `object` **response** — response onject (from Node.js HTTP module)
-* `numder` **uid** — unique ID
-* `date` **startTime** — request time
-* `string` **uri** — request URI (if URI folder, in this string added `index` from options). Example, for URL `http://localhost:8000/some/folders/` — `uri: '/some/folders/index.html`
-* `string` **body** — body for response (default empty string)
-* `string` **filename** — full path to requested file
-
 ## Extending server
-You can extend server class (like [Backbone Model](http://backbonejs.org/#Model-extend)).
+You can extend server class.
 
-Use cunstructor function **extend(properties, [classProperties])**.
+``` js
+const Server = require('node-srv');
 
-~~~~~ js
-var srv = require('node-srv');
-
-module.exports = srv.extend({
-    accessLog: function(resObj){
-        console.log(JSON.stringify(resObj));
+class MyServer extends Server {
+    log(string) {
+        console.log(string);
     }
-});
-~~~~~
+}
+```
 
-If you want to change server name, extend properties `name` and `version`.
+## Handlers
 
-Example for **gfm-srv**
-~~~~~ js
-var srv = require('node-srv');
+You can add custom handlres specific path patterns (like [minimatch](https://www.npmjs.com/package/minimatch)).
 
-module.exports = srv.extend({
-    name: "gfm-srv",
-    version: "2.0.1"
-});
-~~~~~
+``` js
+const Server = require('node-srv');
+
+class MyServer extends Server {}
+    handlers() { // or object
+        return {
+            ".(md|markdown)": function(response, filePath){
+                return this.handlerMarkdown(response, filePath);
+            }
+            "/static/fake": function(response, filePath){
+                response.writeHead(204, server.getHeaders());
+                response.write('');
+                response.end();
+
+                return 204
+            }
+            "/static/**/*": function(response, filePath){
+                return this.handlerStaticFile(response, filePath);
+            }
+        }
+    }
+
+    handlerMarkdown(response, filePath) {
+        let server = this;
+
+        return new Promise(function(resolve, reject){
+            markdown.renderFile(filePath, function(err, html){
+                if(err) return reject(err);
+
+                headers = server.getHeaders();
+                headers['Content-Type'] = 'text/html';
+
+                response.writeHead(200, headers);
+                response.write(html);
+                response.end();
+
+                resolve(200);
+            });
+        });
+    }
+}
+
+new MyServer({port: 8000, logs: true, index: 'README.md'});
+```
+You can return HTTP code or Promise object (and resolve HTTP code).
+
+You can use default handlers:
+* `handlerStaticFile(response, filePath)` for response files
+* `handlerNotFound(response, filePath)` for response 404 error
+
+If you reject Promise with object with code **ENOENT**, server response 404 error, else server response 500 error.
