@@ -20,7 +20,6 @@ module.exports = function(grunt) {
             index: 'index.html',
             logs: false,
             '404': null,
-            '500': null,
             keepalive: true
         }, this.data);
 
@@ -30,7 +29,7 @@ module.exports = function(grunt) {
             grunt.log.ok('Server was shutdown at ' + new Date().toJSON());
         });
 
-        grunt.log.ok "node-srv server running at\n => http://localhost:#{options.port}/\n"
+        grunt.log.ok("node-srv server running at\n => http://localhost:" + options.port + "/\n");
 
         if(!options.keepalive){
             done();

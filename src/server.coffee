@@ -106,7 +106,7 @@ class Server
 
     processRequest: (res, filePath)->
         if handler = @handle filePath
-            return handler.call @ res, filePath
+            return handler.call @, res, filePath
 
         else
             return @handlerStaticFile res, filePath

@@ -28,6 +28,8 @@ var srv = new Server({
     port: 5000,
     root: '../www/',
     logs: true
+}, function(){
+    console.log('Server stopped');
 });
 
 //Stop server
