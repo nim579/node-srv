@@ -59,6 +59,8 @@ class Server
     request: (req, res)->
         time = new Date()
         filePath = null
+        method   = null
+        headers  = null
 
         new Promise (resolve, reject)=>
             uri = url.parse req.url
@@ -70,14 +72,21 @@ class Server
             filePath = filePath.replace /^\//, ""
             filePath = path.resolve process.cwd(), @options.root or './', filePath
 
-            return @processRequest res, filePath
+            method  = req.method
+            headers = req.headers
+
+            return @processRequest res, filePath, method, headers
 
         , (err)=>
             return @errorCode res, 400, "Message: #{err.message}\nURL: #{req.url}\n\n#{err.stack}"
 
         .catch (err)=>
             if err.code is 'ENOENT'
-                return @handlerNotFound res, err.path
+                return @handlerNotFound res, err.path, method, headers
+
+            else if err.code is 405
+                @log "[#{time.toJSON()}] Error: #{err.message}, Code: #{err.code}"
+                return @errorCode res, 405, "Message: #{err.message}\nCode: #{err.code}"
 
             else
                 @log "[#{time.toJSON()}] Error: #{err.message}, Code: #{err.code}"
@@ -93,6 +102,7 @@ class Server
             log  = "[#{time.toJSON()}]"
             log += " (+#{Date.now() - time}ms):"
             log += " #{code}"
+            log += " #{method}"
             log += " #{host}"
             log += " - #{filePath}" if filePath
             log += " (#{req.headers['user-agent']})" if req.headers['user-agent']
@@ -101,15 +111,47 @@ class Server
 
     getHeaders: (filePath)->
         headers = "Server": "#{@name}/#{@version}"
-        headers["Content-Type"] = mime.lookup filePath if filePath
+
+        if filePath
+            headers["Content-Type"] = mime.lookup filePath
+
         return headers
 
-    processRequest: (res, filePath)->
+    parseRange: (range='', size=0)->
+        return null unless String(range).indexOf('bytes=') is 0
+
+        firstRangeStr = range.replace('bytes=', '').split(',')[0]
+        return null unless firstRangeStr.indexOf('-') > -1
+
+        [start, end] = firstRangeStr.split('-')
+        start = parseInt start, 10
+        end   = parseInt end,   10
+
+        if _.isNaN(start)
+            start = size - end
+            end   = size - 1
+
+        else if _.isNaN(end)
+            end   = size - 1
+
+        if end > size - 1
+            end   = size - 1
+
+        return null if _.isNaN(start) or _.isNaN(end) or start > end or start < 0
+        return {start, end}
+
+    fileStats: (path)->
+        new Promise (resolve, reject)->
+            fs.stat path, (err, stats)->
+                return reject err if err
+                return resolve stats
+
+    processRequest: (res, filePath, method, headers)->
         if handler = @handle filePath
-            return handler.call @, res, filePath
+            return handler.call @, res, filePath, method, headers
 
         else
-            return @handlerStaticFile res, filePath
+            return @handlerStaticFile res, filePath, method, headers
 
     handle: (filePath)->
         handlers = _.result @, 'handlers'
@@ -122,47 +164,86 @@ class Server
 
     handlers: -> {}
 
-    handlerStaticFile: (res, filePath)->
-        server = @
+    handlerStaticFile: (res, filePath, method, reqHeaders)->
+        load = (range, headers, successCode)->
+            new Promise (resolve, reject)->
+                fs.createReadStream filePath, range
+                .on 'open', ->
+                    res.writeHead successCode, headers
 
-        new Promise (resolve, reject)->
-            fs.createReadStream filePath
-            .on 'open', ->
-                res.writeHead 200, server.getHeaders filePath
+                .on 'error', (err)->
+                    reject err
 
-            .on 'error', (err)->
-                reject err
+                .on 'data', (data)->
+                    res.write data
 
-            .on 'data', (data)->
-                res.write data
+                .on 'end', ->
+                    res.end()
+                    resolve successCode
 
-            .on 'end', ->
+        Promise.resolve()
+        .then =>
+            @fileStats filePath
+
+        .then (stats)=>
+            range = @parseRange reqHeaders['range'], stats.size
+            code = if range then 206 else 200
+
+            headers = @getHeaders filePath
+            headers["Accept-Ranges"] = 'bytes'
+
+            if range
+                headers['Content-Range']  = "#{range.start}-#{range.end}/#{stats.size}"
+                headers['Content-Length'] = range.end - range.start
+
+            else
+                headers['Content-Length'] = stats.size
+
+            if method is 'HEAD'
+                res.writeHead code, headers
                 res.end()
-                resolve 200
+                return code
 
-    handlerNotFound: (res, filePath)->
+            else if method is 'GET'
+                return load range, headers, code
+
+            else
+                throw code: 405, message: "#{method} method not allowed"
+
+    handlerNotFound: (res, filePath, method, headers)->
+        code = 404
+
         notFound = =>
-            return @errorCode res, 404, "Path: #{filePath}"
+            return @errorCode res, code, "Path: #{filePath}"
 
-        unless @options['404']
+        unless @options[code]
             return notFound()
 
-        errorPath = path.resolve process.cwd(), @options['404']
+        errorPath = path.resolve process.cwd(), @options[code]
+        headers = _.extend @getHeaders(), "Content-Type": "text/html"
 
-        new Promise (resolve, reject)=>
-            fs.createReadStream errorPath
-            .on 'open', ->
-                res.writeHead 404, _.extend @getHeaders(), "Content-Type": "text/html"
+        if method is 'HEAD'
+            res.writeHead code, headers
+            res.end()
+            return code
 
-            .on 'error', (err)->
-                reject err
+        else if method is 'GET'
+            new Promise (resolve, reject)=>
+                fs.createReadStream errorPath
+                .on 'open', ->
+                    res.writeHead code, headers
 
-            .on 'data', (data)->
-                res.write data
+                .on 'error', (err)->
+                    reject err
 
-            .on 'end', ->
-                res.end()
-                resolve 404
+                .on 'data', (data)->
+                    res.write data
+
+                .on 'end', ->
+                    res.end()
+                    resolve code
+        else
+            throw code: 405, message: "#{method} method not allowed"
 
     errorCode: (res, code, text='')->
         text = "<pre>#{text}</pre>" if text

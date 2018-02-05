@@ -140,22 +140,34 @@ class MyServer extends Server {}
         }
     }
 
-    handlerMarkdown(response, filePath) {
+    handlerMarkdown(response, filePath, method, headers) {
         let server = this;
 
         return new Promise(function(resolve, reject){
-            markdown.renderFile(filePath, function(err, html){
-                if(err) return reject(err);
-
+            if(method === 'HEAD'){
                 headers = server.getHeaders();
                 headers['Content-Type'] = 'text/html';
 
                 response.writeHead(200, headers);
-                response.write(html);
                 response.end();
 
                 resolve(200);
-            });
+            } else if(method === 'GET') {
+                markdown.renderFile(filePath, function(err, html){
+                    if(err) return reject(err);
+
+                    headers = server.getHeaders();
+                    headers['Content-Type'] = 'text/html';
+
+                    response.writeHead(200, headers);
+                    response.write(html);
+                    response.end();
+
+                    resolve(200);
+                });
+            } else {
+                reject({code: 405});
+            }
         });
     }
 }
@@ -165,7 +177,7 @@ new MyServer({port: 8000, logs: true, index: 'README.md'});
 You can return HTTP code or Promise object (and resolve HTTP code).
 
 You can use default handlers:
-* `handlerStaticFile(response, filePath)` for response files
-* `handlerNotFound(response, filePath)` for response 404 error
+* `handlerStaticFile(response, filePath, method, headers)` for response files
+* `handlerNotFound(response, filePath, method, headers)` for response 404 error
 
 If you reject Promise with object with code **ENOENT**, server response 404 error, else server response 500 error.
