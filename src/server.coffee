@@ -67,10 +67,14 @@ class Server
             resolve uri.pathname
 
         .then (pathname)=>
+            rootPath = path.resolve process.cwd(), @options.root or './'
+
             filePath = pathname
             filePath = filePath.replace /\/$/, "/#{@options.index}"
             filePath = filePath.replace /^\//, ""
-            filePath = path.resolve process.cwd(), @options.root or './', filePath
+            filePath = path.join rootPath, filePath
+
+            throw code: 400, message: "Bad URL: #{pathname}" if filePath.indexOf(rootPath) isnt 0
 
             method  = req.method
             headers = req.headers
@@ -84,7 +88,7 @@ class Server
             if err.code is 'ENOENT'
                 return @handlerNotFound res, err.path, method, headers
 
-            else if err.code is 405
+            else if err.code in [400, 405]
                 @log "[#{time.toJSON()}] Error: #{err.message}, Code: #{err.code}"
                 return @errorCode res, 405, "Message: #{err.message}\nCode: #{err.code}"
 
@@ -117,7 +121,7 @@ class Server
 
         return headers
 
-    parseRange: (range='', size=0)->
+    _parseRange: (range='', size=0)->
         return null unless String(range).indexOf('bytes=') is 0
 
         firstRangeStr = range.replace('bytes=', '').split(',')[0]
@@ -186,7 +190,7 @@ class Server
             @fileStats filePath
 
         .then (stats)=>
-            range = @parseRange reqHeaders['range'], stats.size
+            range = @_parseRange reqHeaders['range'], stats.size
             code = if range then 206 else 200
 
             headers = @getHeaders filePath
