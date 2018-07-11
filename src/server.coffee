@@ -3,6 +3,7 @@ fs        = require 'fs'
 _         = require 'underscore'
 mime      = require 'mime'
 http      = require 'http'
+https     = require 'https'
 url       = require 'url'
 path      = require 'path'
 minimatch = require 'minimatch'
@@ -17,8 +18,11 @@ class Server
         host: '0.0.0.0'
         logs: false
         index: 'index.html'
+        https: false
+        key: false
+        cert: false
 
-    constructor: (options={}, @exitCallback)->
+    constructor: (options = {}, @exitCallback)->
         @options = _.extend @defaults(), options
 
         @_initLogs()
@@ -27,8 +31,52 @@ class Server
         @start()
 
     start: ->
+        return @startHTTPS() if @options.https
+        return @startHTTP()
+
+    startHTTP: ->
         @server = http
         .createServer _.bind(@request, @)
+        .listen Number(@options.port), @options.host
+
+    startHTTPS: ->
+        certificateChecked = true
+        certOptions = {}
+
+        if _.isEmpty @options.key
+            @log "Path to key file demanded for running HTTPS server: --key=/path/to/server.key"
+            certificateChecked = false
+
+        if _.isEmpty @options.cert
+            @log "Path to certificate file demanded for running HTTPS server: --key=/path/to/server.cert"
+            certificateChecked = false
+
+
+        if certificateChecked
+            try
+                certOptions.key = fs.readFileSync path.resolve @options.key
+            catch error
+                if error.code is 'ENOENT'
+                    console.log "Can't open key file", @options.key, ' (ENOENT)'
+                else
+                    console.log error
+                certificateChecked = false
+
+            try
+                certOptions.cert = fs.readFileSync path.resolve @options.cert
+            catch error
+                if error.code is 'ENOENT'
+                    console.log "Can't open certificate file", @options.cert, ' (ENOENT)'
+                else
+                    console.log error
+                certificateChecked = false
+
+        if not certificateChecked
+            console.log "Can't start HTTPS server without valid certificate"
+            process.exit(1)
+
+        @server = https
+        .createServer certOptions, _.bind(@request, @)
         .listen Number(@options.port), @options.host
 
     stop: (callback)->
@@ -62,7 +110,7 @@ class Server
         method   = null
         headers  = null
 
-        new Promise (resolve, reject)=>
+        new Promise (resolve, reject)->
             uri = url.parse req.url
             resolve uri.pathname
 
@@ -101,7 +149,7 @@ class Server
             return @errorCode res, 500, "Message: #{err.message}\nCode: #{err.code}\n\n#{err.stack}"
 
         .then (code)=>
-            host = path.join req.headers.host or 'localhost:'+@options.port, req.url
+            host = path.join req.headers.host or 'localhost:' + @options.port, req.url
 
             log  = "[#{time.toJSON()}]"
             log += " (+#{Date.now() - time}ms):"
@@ -121,7 +169,7 @@ class Server
 
         return headers
 
-    _parseRange: (range='', size=0)->
+    _parseRange: (range = '', size = 0)->
         return null unless String(range).indexOf('bytes=') is 0
 
         firstRangeStr = range.replace('bytes=', '').split(',')[0]
@@ -232,7 +280,7 @@ class Server
             return code
 
         else if method is 'GET'
-            new Promise (resolve, reject)=>
+            new Promise (resolve, reject) ->
                 fs.createReadStream errorPath
                 .on 'open', ->
                     res.writeHead code, headers
@@ -249,7 +297,7 @@ class Server
         else
             throw code: 405, message: "#{method} method not allowed"
 
-    errorCode: (res, code, text='')->
+    errorCode: (res, code, text = '')->
         text = "<pre>#{text}</pre>" if text
 
         res.writeHead code, _.extend @getHeaders(), "Content-Type": "text/html"
