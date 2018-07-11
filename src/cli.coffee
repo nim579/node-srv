@@ -16,10 +16,21 @@ program.version pkg.version
     .option '-h, --host [host]', 'Sets hots on which the server will work', '0.0.0.0'
     .option '-i, --index [file]', 'Sets the index file for opening like default file in directories', 'index.html'
     .option '-l, --logs [path/boolean]', 'Logs writing flag', false
+    .option '-s, --https [boolean]', 'Force create https server', false
+    .option '-k, --key [path/boolean]', 'Path to key file for https server', false
+    .option '-c, --cert [path/boolean]', 'Path to certificate file for https server', false
     .option '--404 [path]', 'Path to 404 error page', null
     .parse process.argv
 
 srv = new server program, ->
     console.log 'Server was shutdown at ' + new Date().toJSON()
 
-console.log "node-srv server running at\n => http://localhost:#{program.port}/\n"
+if program.https
+    console.log "Secure server node-srv running at\n => https://localhost:#{program.port}\n"
+else
+    console.log "Server node-srv running at\n => http://localhost:#{program.port}\n"
+
+if program.logs
+    console.log "Logs are on."
+else
+    console.log "Logs are off."
