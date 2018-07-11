@@ -29,7 +29,12 @@ module.exports = function(grunt) {
             grunt.log.ok('Server was shutdown at ' + new Date().toJSON());
         });
 
-        grunt.log.ok("node-srv server running at\n => http://localhost:" + options.port + "/\n");
+        var host = 'localhost';
+        if(options.host && options.host != '0.0.0.0'){
+            host = options.host;
+        }
+
+        grunt.log.ok("node-srv server running at\n => http://" + host +":" + options.port + "/\n");
 
         if(!options.keepalive){
             done();

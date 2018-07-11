@@ -19,8 +19,8 @@ class Server
         logs: false
         index: 'index.html'
         https: false
-        key: false
-        cert: false
+        key: null
+        cert: null
 
     constructor: (options = {}, @exitCallback)->
         @options = _.extend @defaults(), options
@@ -31,8 +31,11 @@ class Server
         @start()
 
     start: ->
-        return @startHTTPS() if @options.https
-        return @startHTTP()
+        if @options.https
+            return @startHTTPS()
+
+        else
+            return @startHTTP()
 
     startHTTP: ->
         @server = http
@@ -51,28 +54,33 @@ class Server
             @log "Path to certificate file demanded for running HTTPS server: --key=/path/to/server.cert"
             certificateChecked = false
 
-
         if certificateChecked
             try
                 certOptions.key = fs.readFileSync path.resolve @options.key
+
             catch error
                 if error.code is 'ENOENT'
-                    console.log "Can't open key file", @options.key, ' (ENOENT)'
+                    console.error "Can't open key file", @options.key, ' (ENOENT)'
+
                 else
-                    console.log error
+                    console.error error
+
                 certificateChecked = false
 
             try
                 certOptions.cert = fs.readFileSync path.resolve @options.cert
+
             catch error
                 if error.code is 'ENOENT'
-                    console.log "Can't open certificate file", @options.cert, ' (ENOENT)'
+                    console.error "Can't open certificate file", @options.cert, ' (ENOENT)'
+
                 else
-                    console.log error
+                    console.error error
+
                 certificateChecked = false
 
-        if not certificateChecked
-            console.log "Can't start HTTPS server without valid certificate"
+        unless certificateChecked
+            console.error "Can't start HTTPS server without valid certificate"
             process.exit(1)
 
         @server = https
@@ -114,15 +122,15 @@ class Server
             uri = url.parse req.url
             resolve uri.pathname
 
-        .then (pathname)=>
+        .then (addr)=>
             rootPath = path.resolve process.cwd(), @options.root or './'
 
-            filePath = pathname
+            filePath = addr
             filePath = filePath.replace /\/$/, "/#{@options.index}"
             filePath = filePath.replace /^\//, ""
             filePath = path.join rootPath, filePath
 
-            throw code: 400, message: "Bad URL: #{pathname}" if filePath.indexOf(rootPath) isnt 0
+            throw code: 400, message: "Bad URL: #{addr}" if filePath.indexOf(rootPath) isnt 0
 
             method  = req.method
             headers = req.headers
@@ -169,7 +177,7 @@ class Server
 
         return headers
 
-    _parseRange: (range = '', size = 0)->
+    _parseRange: (range='', size=0)->
         return null unless String(range).indexOf('bytes=') is 0
 
         firstRangeStr = range.replace('bytes=', '').split(',')[0]
@@ -205,11 +213,14 @@ class Server
         else
             return @handlerStaticFile res, filePath, method, headers
 
+    matchPath: (pattern, filePath)->
+        return minimatch filePath, pattern
+
     handle: (filePath)->
         handlers = _.result @, 'handlers'
 
         for pattern of handlers
-            if minimatch filePath, pattern
+            if @matchPath pattern, filePath
                 return handlers[pattern]
 
         return null
@@ -280,7 +291,7 @@ class Server
             return code
 
         else if method is 'GET'
-            new Promise (resolve, reject) ->
+            new Promise (resolve, reject)->
                 fs.createReadStream errorPath
                 .on 'open', ->
                     res.writeHead code, headers
@@ -297,7 +308,7 @@ class Server
         else
             throw code: 405, message: "#{method} method not allowed"
 
-    errorCode: (res, code, text = '')->
+    errorCode: (res, code, text='')->
         text = "<pre>#{text}</pre>" if text
 
         res.writeHead code, _.extend @getHeaders(), "Content-Type": "text/html"

@@ -125,6 +125,7 @@ class MyServer extends Server {}
     handlers() { // or object
         return {
             ".(md|markdown)": function(response, filePath){
+                // filePath is absolute path in host file system
                 return this.handlerMarkdown(response, filePath);
             }
             "/static/fake": function(response, filePath){
