@@ -43,6 +43,9 @@ srv.stop();
 * **-h, --host [host]** — Host or ip address on which the server will work (any host by default)
 * **-i, --index [file]** — Sets default index file for directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
 * **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log)
+* **-s, --https [boolean]** — Force create HTTPS server (only with `--key` and `--cert` options)
+* **-k, --key [path]** — Path to key file for https server
+* **-c, --cert [path]** — Path to certificate file for https server
 * **--404 [path]** — Path to 404 error page
 
 ## Usage as [Grunt.js](http://gruntjs.com/) task
