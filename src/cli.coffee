@@ -13,7 +13,7 @@ catch e
 program.version pkg.version
     .option '-p, --port [number]', 'Sets port on which the server will work', process.env.PORT or '8000'
     .option '-r, --root [path]', 'Sets the root from which the server will run', root
-    .option '-h, --host [host]', 'Sets hots on which the server will work', '0.0.0.0'
+    .option '-h, --host [host]', 'Sets host on which the server will work', '0.0.0.0'
     .option '-i, --index [file]', 'Sets the index file for opening like default file in directories', 'index.html'
     .option '-l, --logs [path/boolean]', 'Logs writing flag', false
     .option '-s, --https [boolean]', 'Force create https server', false
