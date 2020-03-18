@@ -2,3 +2,5 @@ Gruntfile.coffee
 /src/
 .git*
 *.coffee
+coffeelint.json
+.editorconfig

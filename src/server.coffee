@@ -346,7 +346,8 @@ class Server
 
     _getHandler: (pathname)->
         found = _.find @_routes, ({pattern, handler})=>
-            return minimatch(pattern, pathname) and _.isFunction(handler) or _.isFunction(@_handlers[handler])
+            minimatch(pathname, pattern, matchBase: true) and
+            (_.isFunction(handler) or _.isFunction(@_handlers[handler]))
 
         return found?.handler or ''
 
