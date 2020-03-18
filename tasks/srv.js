@@ -12,14 +12,14 @@ module.exports = function(grunt) {
     grunt.registerMultiTask('srv', 'Simple server for Grunt.js', function() {
         var done = this.async();
 
-        var _ = require('underscore');
+        var _ = require('lodash');
 
         var options = _.extend({
             port: '8000',
-            root: './',
+            root: '.',
             index: 'index.html',
             logs: false,
-            '404': null,
+            cors: true,
             keepalive: true
         }, this.data);
 

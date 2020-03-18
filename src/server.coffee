@@ -1,17 +1,21 @@
-pkg       = require '../package.json'
-fs        = require 'fs'
-_         = require 'underscore'
-mime      = require 'mime'
-http      = require 'http'
-https     = require 'https'
-url       = require 'url'
-path      = require 'path'
-minimatch = require 'minimatch'
+_ = require('lodash')
+fs = require('fs')
+pkg = require('../package.json')
+url = require('url')
+path = require('path')
+mime = require('mime')
+http = require('http')
+https = require('https')
+minimatch = require('minimatch')
+
+defaultHandlers = require('./handlers')
 
 
 class Server
-    name: pkg.name
-    version: pkg.version
+    server = null
+
+    @module: pkg.name
+    @version: pkg.version
 
     defaults: ->
         port: 8000
@@ -21,163 +25,257 @@ class Server
         https: false
         key: null
         cert: null
+        cors: false
+        timeout: 30000
 
-    constructor: (options = {}, @exitCallback)->
-        @options = _.extend @defaults(), options
+    routes: -> []
+    handlers: -> {}
 
-        @_initLogs()
-        @_bindCloseEvents()
+    constructor: (userOptions = {}, userRoutes, userHandlers, exitCallback)->
+        options = {}
+        handlers = {}
+        routes = []
 
-        @start()
+        Object.defineProperty @, 'module',
+            enumerable: true
+            get: => @constructor.module
+
+        Object.defineProperty @, 'version',
+            enumerable: true
+            get: => @constructor.version
+
+        Object.defineProperty @, 'exitCallback',
+            get: -> exitCallback
+
+        Object.defineProperty @, 'options',
+            enumerable: true
+
+            get: -> options
+
+            set: (newOptions)=>
+                options = _.assign options, _.result(@, 'defaults'), newOptions
+                @restart()
+
+        Object.defineProperty @, '_routes',
+            get: ->
+                return _.concat routes,
+                    pattern: '**/*'
+                    handler: 'file'
+
+            set: (newRoutes)->
+                if _.isObject newRoutes
+                    newRoutes = _.map newRoutes, (val, key)-> pattern: key, handler: val
+
+                newRoutes = _.chain newRoutes
+                .filter 'pattern'
+                .filter 'handler'
+                .value()
+
+                routes = _.unionBy routes, newRoutes, 'pattern'
+
+        Object.defineProperty @, '_handlers',
+            get: -> handlers
+
+            set: (newHandlers)->
+                handlers = _.assign handlers, defaultHandlers, newHandlers
+
+        Object.defineProperty @, '_server',
+            get: -> server
+
+        @_routes   = _.result @, 'routes'
+        @_handlers = _.result @, 'handlers'
+
+        @_routes   = userRoutes
+        @_handlers = userHandlers
+        @options   = userOptions
 
     start: ->
         if @options.https
-            return @startHTTPS()
+            server = @_startHTTP()
 
         else
-            return @startHTTP()
+            server = @_startHTTP()
 
-    startHTTP: ->
-        @server = http
-        .createServer _.bind(@request, @)
-        .listen Number(@options.port), @options.host
+        return @
 
-    startHTTPS: ->
-        certificateChecked = true
-        certOptions = {}
+    restart: ->
+        @_stopLogs()
+        @_startLogs()
 
-        if _.isEmpty @options.key
-            @log "Path to key file demanded for running HTTPS server: --key=/path/to/server.key"
-            certificateChecked = false
+        @_server?.close()
+        @start()
 
-        if _.isEmpty @options.cert
-            @log "Path to certificate file demanded for running HTTPS server: --key=/path/to/server.cert"
-            certificateChecked = false
-
-        if certificateChecked
-            try
-                certOptions.key = fs.readFileSync path.resolve @options.key
-
-            catch error
-                if error.code is 'ENOENT'
-                    console.error "Can't open key file", @options.key, ' (ENOENT)'
-
-                else
-                    console.error error
-
-                certificateChecked = false
-
-            try
-                certOptions.cert = fs.readFileSync path.resolve @options.cert
-
-            catch error
-                if error.code is 'ENOENT'
-                    console.error "Can't open certificate file", @options.cert, ' (ENOENT)'
-
-                else
-                    console.error error
-
-                certificateChecked = false
-
-        unless certificateChecked
-            console.error "Can't start HTTPS server without valid certificate"
-            process.exit(1)
-
-        @server = https
-        .createServer certOptions, _.bind(@request, @)
-        .listen Number(@options.port), @options.host
+        return @
 
     stop: (callback)->
-        @server?.close()
+        @_server?.close()
         @_loger?.end()
 
         @exitCallback?()
         callback?()
 
-    _bindCloseEvents: ->
-        exit = =>
-            process.removeAllListeners 'SIGINT'
-            process.removeAllListeners 'SIGTERM'
+        return @
 
-            @stop -> process.exit()
+    log: (string)->
+        @_logger?.write string + '\n'
+        @_log? string
 
-        process.on 'SIGINT', exit
-        process.on 'SIGTERM', exit
-
-    _initLogs: ->
-        if @options.logs
-            if typeof @options.logs is 'string'
-                @_logger = fs.createWriteStream @options.logs, flags: 'a'
-
-            else
-                @_log = console.log
+        return @
 
     request: (req, res)->
         time = new Date()
-        filePath = null
-        method   = null
-        headers  = null
+        req_params = null
+        req_handler = null
 
-        new Promise (resolve, reject)->
-            uri = url.parse req.url
-            resolve uri.pathname
+        Promise.resolve()
+        .then =>
+            @_requestData req
 
-        .then (addr)=>
-            rootPath = path.resolve process.cwd(), @options.root or './'
+        .then (data)=>
+            @_navigate req, data
 
-            filePath = addr
-            filePath = filePath.replace /\/$/, "/#{@options.index}"
-            filePath = filePath.replace /^\//, ""
-            filePath = path.join rootPath, filePath
+        .then (params)=>
+            req_params = params
+            req_handler = params.handler
 
-            throw code: 400, message: "Bad URL: #{addr}" if filePath.indexOf(rootPath) isnt 0
+            @_handle params.handler, params, req, res
 
-            method  = req.method
-            headers = req.headers
+        .catch (params)->
+            return params if params.handler or params.body or params.streamed
+            throw  params
 
-            return @processRequest res, filePath, method, headers
+        .then (params)=>
+            if params.handler
+                error_params = _.assign {}, req_params, params
+                return @_handle params.handler, error_params, req, res
 
-        , (err)=>
-            return @errorCode res, 400, "Message: #{err.message}\nURL: #{req.url}\n\n#{err.stack}"
+            return params
 
-        .catch (err)=>
-            if err.code is 'ENOENT'
-                return @handlerNotFound res, err.path, method, headers
+        .then (params)=>
+            @response res, params, req_params
 
-            else if err.code in [400, 405]
-                @log "[#{time.toJSON()}] Error: #{err.message}, Code: #{err.code}"
-                return @errorCode res, 405, "Message: #{err.message}\nCode: #{err.code}"
+        .catch (error)=>
+            @log "[#{time.toJSON()}] Error: #{error.message or 'none'}"
 
-            else
-                @log "[#{time.toJSON()}] Error: #{err.message}, Code: #{err.code}"
-                return @errorCode res, 500, "Message: #{err.message}\nCode: #{err.code}\n\n#{err.stack}"
+            error_params = _.assign {}, req_params, error
 
-        .catch (err)=>
-            @log "[#{time.toJSON()}] Error: #{err.message}"
-            return @errorCode res, 500, "Message: #{err.message}\nCode: #{err.code}\n\n#{err.stack}"
+            @_handle 'serverError', error_params, req, res
+            .then (result)=>
+                return @response res, result, req_params
 
-        .then (code)=>
-            host = path.join req.headers.host or 'localhost:' + @options.port, req.url
+        .then (params)=>
+            host = path.join req.headers.host or 'localhost:' + @options.port
 
             log  = "[#{time.toJSON()}]"
             log += " (+#{Date.now() - time}ms):"
-            log += " #{code}"
-            log += " #{method}"
-            log += " #{host}"
-            log += " - #{filePath}" if filePath
-            log += " (#{req.headers['user-agent']})" if req.headers['user-agent']
+            log += " #{params.code}"
+            log += "\t#{host}"
+            log += " #{req_params.method}"
+            log += " #{req_params.uri}"
+            log += "\t#{req_params.file}" if req_params.file
+            log += "\t(#{req.headers['user-agent']})" if req.headers['user-agent']
 
             @log log
 
-    getHeaders: (filePath)->
-        headers = "Server": "#{@name}/#{@version}"
+    response: (res, params, req_params)->
+        if params.streamed
+            res.end()
 
-        if filePath
-            headers["Content-Type"] = mime.lookup filePath
+        else
+            res.writeHead(
+                params.code or if params.body then 200 else 204,
+                @_responseHeaders params, req_params
+            )
 
-        return headers
+            res.write params.body or ''
 
-    _parseRange: (range='', size=0)->
+            res.end()
+
+        return params
+
+    _startHTTP: ->
+        return http
+        .createServer (req, res)=> @request req, res
+        .listen @options.port, @options.host
+
+    _startHTTPS: ->
+        cert = @_getCert()
+
+        return https
+        .createServer cert, (req, res)=> @request req, res
+        .listen @options.port, @options.host
+
+    _getCert: ->
+        if _.isEmpty @options.key
+            throw new Error "Path to key file demanded for running HTTPS server: --key=/path/to/server.key"
+
+        if _.isEmpty @options.cert
+            throw new Error "Path to certificate file demanded for running HTTPS server: --key=/path/to/server.cert"
+
+        try
+            key = fs.readFileSync path.resolve @options.key
+
+        catch error
+            throw new Error "Can't open key file #{@options.key} (error.code)"
+
+        try
+            cert = fs.readFileSync path.resolve @options.cert
+
+        catch error
+            throw new Error "Can't open cert file #{@options.cert} (error.code)"
+
+        return {key, cert}
+
+    _stopLogs: ->
+        @_logger?.end()
+
+        delete @_logger
+        delete @_log
+
+    _startLogs: ->
+        return unless @options.logs
+
+        if typeof @options.logs is 'string'
+            @_logger = fs.createWriteStream @options.logs, flags: 'a'
+
+        else
+            @_log = console.log
+
+    _requestData: (req)->
+        new Promise (resolve, reject)->
+            data = []
+
+            req.on 'data', (chunk)-> data.push chunk
+
+            req.on 'end', -> resolve Buffer.concat data
+
+            req.on 'error', (error)-> reject error
+
+    _responseHeaders: (response, request)->
+        srvName = "#{@module}/#{@version}"
+
+        headers =
+            'Server': srvName
+            'X-Server': srvName
+
+        headers['Content-Type'] = mime.getType request.file if request.file
+
+        if @options.cors
+            allowHeaders = request.headers?['access-control-request-headers']?.split(/,\s*/) or []
+            requestHeaders = _.keys request.headers or {}
+            requestHeaders = _.union requestHeaders, allowHeaders
+
+            allowMethod = request.headers?['access-control-request-method']
+            requestMethods = [request.method or 'GET']
+            requestMethods = _.compact _.uniq [request.method, allowMethod]
+
+            headers['Access-Control-Allow-Origin']  = if @options.cors is true then '*' else @options.cors
+            headers['Access-Control-Allow-Headers'] = requestHeaders.join(',')
+            headers['Access-Control-Allow-Methods'] = requestMethods.join(',')
+
+        return _.defaults response.headers, headers
+
+    _range: (range = '', size = 0)->
         return null unless String(range).indexOf('bytes=') is 0
 
         firstRangeStr = range.replace('bytes=', '').split(',')[0]
@@ -200,126 +298,84 @@ class Server
         return null if _.isNaN(start) or _.isNaN(end) or start > end or start < 0
         return {start, end}
 
-    fileStats: (path)->
-        new Promise (resolve, reject)->
-            fs.stat path, (err, stats)->
-                return reject err if err
-                return resolve stats
+    _cookie: (cookie)->
+        return {} unless cookie
 
-    processRequest: (res, filePath, method, headers)->
-        if handler = @handle filePath
-            return handler.call @, res, filePath, method, headers
+        cookieArr = cookie.split ';'
+        cookieObj = {}
 
-        else
-            return @handlerStaticFile res, filePath, method, headers
+        for el in cookieArr
+            elSplit = el.split '='
 
-    matchPath: (pattern, filePath)->
-        return minimatch filePath, pattern
+            if elSplit.length >= 2
+                cookieObj[elSplit[0].trim()] = elSplit.slice(1).join('=').trim()
 
-    handle: (filePath)->
-        handlers = _.result @, 'handlers'
+        return cookieObj
 
-        for pattern of handlers
-            if @matchPath pattern, filePath
-                return handlers[pattern]
+    _navigate: (req, data)->
+        method = req.method
+        headers = req.headers
+        client_ip = headers['x-forwarded-for'] or req.connection?.remoteAddress
+        cookie = @_cookie headers['cookie']
+        range = @_range headers['range']
 
-        return null
+        params = {uri: req.url, method, headers, client_ip, cookie, range, data}
 
-    handlers: -> {}
+        try
+            {pathname, query, search, hash} = url.parse req.url, true
 
-    handlerStaticFile: (res, filePath, method, reqHeaders)->
-        load = (range, headers, successCode)->
-            new Promise (resolve, reject)->
-                fs.createReadStream filePath, range
-                .on 'open', ->
-                    res.writeHead successCode, headers
+        catch
+            return _.assign params, handler: 'notFound', query: {}, search: null, hash: null
 
-                .on 'error', (err)->
-                    reject err
+        params = _.assign params, {pathname, query, search, hash}
 
-                .on 'data', (data)->
-                    res.write data
+        if method is 'OPTIONS'
+            return _.assign params, handler: 'options'
 
-                .on 'end', ->
-                    res.end()
-                    resolve successCode
+        root = path.resolve process.cwd(), @options.root or './'
 
-        Promise.resolve()
-        .then =>
-            @fileStats filePath
+        file = pathname
+        file = file.replace /\/$/, "/#{@options.index}"
+        file = file.replace /^\//, ""
+        file = path.join root, file
 
-        .then (stats)=>
-            range = @_parseRange reqHeaders['range'], stats.size
-            code = if range then 206 else 200
+        params.file = file
+        params.handler = @_getHandler(pathname) or 'notFound'
 
-            headers = @getHeaders filePath
-            headers["Accept-Ranges"] = 'bytes'
+        return params
 
-            if range
-                headers['Content-Range']  = "#{range.start}-#{range.end}/#{stats.size}"
-                headers['Content-Length'] = range.end - range.start
+    _getHandler: (pathname)->
+        found = _.find @_routes, ({pattern, handler})=>
+            return minimatch(pattern, pathname) and _.isFunction(handler) or _.isFunction(@_handlers[handler])
 
-            else
-                headers['Content-Length'] = stats.size
+        return found?.handler or ''
 
-            if method is 'HEAD'
-                res.writeHead code, headers
-                res.end()
-                return code
+    _handle: (handler, params, req, res)->
+        new Promise (resolve, reject)=>
+            start = (code, headers)=>
+                res.writeHead code, @_responseHeaders headers, params
 
-            else if method is 'GET'
-                return load range, headers, code
+            write = (chunk)->
+                res.write chunk
 
-            else
-                throw code: 405, message: "#{method} method not allowed"
+            end = (res_params)->
+                resolve _.assign res_params, streamed: true
 
-    handlerNotFound: (res, filePath, method, headers)->
-        code = 404
+            stream = {start, write, end}
 
-        notFound = =>
-            return @errorCode res, code, "Path: #{filePath}"
+            setTimeout ->
+                reject _.assign params, handler: 'timeout'
+            , @options.timeout
 
-        unless @options[code]
-            return notFound()
+            try
+                if _.isFunction handler
+                    handler.call @, params, resolve, reject, stream
 
-        errorPath = path.resolve process.cwd(), @options[code]
-        headers = _.extend @getHeaders(), "Content-Type": "text/html"
+                else
+                    @_handlers[handler].call @, params, resolve, reject, stream
 
-        if method is 'HEAD'
-            res.writeHead code, headers
-            res.end()
-            return code
-
-        else if method is 'GET'
-            new Promise (resolve, reject)->
-                fs.createReadStream errorPath
-                .on 'open', ->
-                    res.writeHead code, headers
-
-                .on 'error', (err)->
-                    reject err
-
-                .on 'data', (data)->
-                    res.write data
-
-                .on 'end', ->
-                    res.end()
-                    resolve code
-        else
-            throw code: 405, message: "#{method} method not allowed"
-
-    errorCode: (res, code, text='')->
-        text = "<pre>#{text}</pre>" if text
-
-        res.writeHead code, _.extend @getHeaders(), "Content-Type": "text/html"
-        res.write "<h1>#{code} #{http.STATUS_CODES[code]}</h1>" + text
-        res.end()
-
-        return code
-
-    log: (string)->
-        @_logger?.write string + '\n'
-        @_log? string
+            catch error
+                reject _.assign params, handler: 'serverError', error: error
 
 
 module.exports = Server

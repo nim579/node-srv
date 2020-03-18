@@ -1,5 +1,5 @@
 # Node-srv [![](https://badge.fury.io/js/node-srv.png)](https://npmjs.org/package/node-srv)
-Simple static node.js server. Supports Heroku and Grunt.js
+Simple fast and static node.js server
 
 ## Install
 
@@ -7,20 +7,27 @@ Simple static node.js server. Supports Heroku and Grunt.js
 $ npm install -g node-srv
 ```
 
+
 ## Usage
 
 ``` bash
-# Start server on port 8000
+# Start server on port 8000 in current dir
 $ node-srv
+
+# Start server on port 8000 in parent dir
+$ node-srv ..
 
 # Start server on port 8001 writing logs to *./nodeserver.log* file
 $ node-srv --port 8001 --logs ./nodeserver.log
 ```
 
-## Scripts usage
+
+## API usage
+
+`new Server(options, routes, handlers, exitCallback);`
 
 ``` js
-//Require module
+// Require module
 var server = require('node-srv');
 
 // Start server
@@ -28,31 +35,37 @@ var srv = new Server({
     port: 5000,
     root: '../www/',
     logs: true
-}, function(){
-    console.log('Server stopped');
 });
 
-//Stop server
+// Update server port (automatically restert server with new port)
+srv.options.port = 5001;
+
+// Stop server
 srv.stop();
 ```
 
+
 ## Options
 
-* **-r, --root [path]** — Path, for server root-folder (default *./*)
-* **-p, --port [number]** — Port the server is started on (default *8000*, or env PORT)
-* **-h, --host [host]** — Host or ip address on which the server will work (any host by default)
-* **-i, --index [file]** — Sets default index file for directories. For example: for uri */test/*, server open *test/index.html*. Default *index.html*
-* **-l, --logs [path/boolean]** — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log)
-* **-s, --https [boolean]** — Force create HTTPS server (only with `--key` and `--cert` options)
-* **-k, --key [path]** — Path to key file for https server
-* **-c, --cert [path]** — Path to certificate file for https server
-* **--404 [path]** — Path to 404 error page
+* **-p, --port [number]**, `port` — Port the server is started on (default `8000`, or env PORT)
+* **-h, --host [host]**, `host` — Host or ip address on which the server will work (any host `0.0.0.0` by default)
+* **-i, --index [file]**, `index` — Sets default index file for directories. For example: for uri `/test/`, server open `test/index.html`. Default `index.html`
+* **-l, --logs [path/boolean]**, `logs` — Write logs flag. If you specify a path, it will write to that file (if path is folder, default filename will be node-srv.log). Default `false`
+* **-t, --timeout [ms]**, `timeout` — Requset timeout (in ms). Default `30000`
+* **-s, --https [boolean]**, `https` — Force create HTTPS server (only with `--key` and `--cert` options). Default `false`
+* **--key [path]**, `key` — Path to key file for https server
+* **--cert [path]**, `cert` — Path to certificate file for https server
+* **--cors [hosts]**, `cors` — Enable CORS. If empty uses `*` for host. Default `false`
+* **--not-found [path]**, `notFound` — Path to 404 error page. Default `null`
+* **--help** — print help
+* **--version** — print version
+
 
 ## Usage as [Grunt.js](http://gruntjs.com/) task
 1. Install **node-srv** locally
 
   ``` bash
-  $ npm install node-srv --save
+  $ npm i node-srv
   ```
 
 2. Load task into your **Gruntfile**
@@ -86,23 +99,6 @@ srv.stop();
   $ grunt srv:server2
   ```
 
-## Usage with [Heroku](https://heroku.com)
-
-1. Install **node-srv** localy
-
-  ``` bash
-  $ npm install node-srv --save
-  ```
-
-2. Make [Procfile](https://devcenter.heroku.com/articles/getting-started-with-nodejs#define-a-procfile)
-
-  You can use root, logs, 404 arguments
-
-  ```
-  web: node node_modules/node-srv/ --logs --404 404.html
-  ```
-
-3. Deploy to heroku and enjoy!
 
 ## Extending server
 You can extend server class.
@@ -117,71 +113,92 @@ class MyServer extends Server {
 }
 ```
 
+
 ## Handlers
 
 You can add custom handlres specific path patterns (like [minimatch](https://www.npmjs.com/package/minimatch)).
 
+Parameters way:
 ``` js
 const Server = require('node-srv');
 
-class MyServer extends Server {}
-    handlers() { // or object
-        return {
-            ".(md|markdown)": function(response, filePath){
-                // filePath is absolute path in host file system
-                return this.handlerMarkdown(response, filePath);
-            }
-            "/static/fake": function(response, filePath){
-                response.writeHead(204, server.getHeaders());
-                response.write('');
-                response.end();
+new Server({
+    // options
+    port: 8000
+}, {
+    // routes
+    '**/*.md': 'markdown', // handler name for handlers list
+    '_healthcheck': (params, resolve) => { // direct handler function
+        resolve({
+            body: `OK: ${params.method} ${params.uri}`, // "OK: GET /_healthcheck"
+            code: 200,
+            headers: {'Content-Type': 'text/plain'}
+        });
+    }
+}, {
+    markdown: (params, resolve, reject) => { // handlers key-value list
+        markdown.renderFile(params.file).then( html => {
+            resolve({
+                body: html,
+                code: 200,
+                headers: {'Content-Type': 'text/html'}
+            }, (error) => {
+                if (error.code === 'ENOENT') {
+                    reject({handler: 'notFound'});
+                } else {
+                    reject({error});
+                }
+            });
+        });
+    }
+});
+```
 
-                return 204
+Extend way:
+``` js
+const Server = require('node-srv');
+
+class MyServer extends Server {
+    routes() {
+        return {
+            '**/*.md': 'markdown',
+            '_healthcheck': (params, resolve) => {
+                ... // as in parameters
             }
-            "/static/**/*": function(response, filePath){
-                return this.handlerStaticFile(response, filePath);
+        };
+    }
+    handlers() {
+        return {
+            markdown: (params, resolve, reject) => {
+                ... // as in parameters
             }
         }
     }
-
-    handlerMarkdown(response, filePath, method, headers) {
-        let server = this;
-
-        return new Promise(function(resolve, reject){
-            if(method === 'HEAD'){
-                headers = server.getHeaders();
-                headers['Content-Type'] = 'text/html';
-
-                response.writeHead(200, headers);
-                response.end();
-
-                resolve(200);
-            } else if(method === 'GET') {
-                markdown.renderFile(filePath, function(err, html){
-                    if(err) return reject(err);
-
-                    headers = server.getHeaders();
-                    headers['Content-Type'] = 'text/html';
-
-                    response.writeHead(200, headers);
-                    response.write(html);
-                    response.end();
-
-                    resolve(200);
-                });
-            } else {
-                reject({code: 405});
-            }
-        });
-    }
 }
 
-new MyServer({port: 8000, logs: true, index: 'README.md'});
+new MyServer();
 ```
+
 You can return HTTP code or Promise object (and resolve HTTP code).
 
-You can use default handlers:
-* `handlerStaticFile(response, filePath, method, headers)` for response files
-* `handlerNotFound(response, filePath, method, headers)` for response 404 error
+Default handlers:
+* **file** — response file
+* **notFound** — response error 404 page (default or optional)
+* **timeout** — response timeout page (by default on request timeout)
+* **serverError** — response error 500 page. Define error code by `reject({code: 403})` and page will return that.
+* **options** — response for OPTIONS request method (CORS)
 
-If you reject Promise with object with code **ENOENT**, server response 404 error, else server response 500 error.
+You can override its with any way.
+
+
+## Breaking changes from 2.x to 3.x
+
+CLI options:
+* **-r, --root** removed. Use arguments: old `node-srv --root ../web`, new `node-srv ../web`
+* **--404** renamed to **--not-found**
+* **-k** shortcut removed from **--key**. Use only full flag
+* **-c** shortcut removed from **--cert**. Use only full flag
+
+Program API:
+* class arguments changed
+* handlers architecture changed
