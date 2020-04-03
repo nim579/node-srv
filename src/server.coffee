@@ -59,7 +59,7 @@ class Server
         Object.defineProperty @, '_routes',
             get: ->
                 return _.concat routes,
-                    pattern: '**/*'
+                    pattern: '**'
                     handler: 'file'
 
             set: (newRoutes)->

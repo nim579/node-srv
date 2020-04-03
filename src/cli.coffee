@@ -31,8 +31,8 @@ program
 {port, host, logs, root, index, https, key, cert, cors, notFound, timeout} = program
 root = path.resolve _.head(program.args) if _.head(program.args)
 
-srv = new Server {port, host, logs, root, index, https, key, cert, cors, notFound, timeout}, null, ->
-    console.log 'Server was shutdown at ' + new Date().toJSON()
+srv = new Server {port, host, logs, root, index, https, key, cert, cors, notFound, timeout}, null, null, ->
+    console.log '\nServer was shutdown at ' + new Date().toJSON()
 
 process.on 'SIGINT',  -> srv.stop -> process.exit()
 process.on 'SIGTERM', -> srv.stop -> process.exit()
