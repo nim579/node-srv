@@ -21,8 +21,8 @@ file = (params, resolve, reject, stream)->
         headers = 'Accept-Ranges': 'bytes'
 
         if range
-            headers['Content-Range']  = "#{range.start}-#{range.end}/#{stats.size}"
-            headers['Content-Length'] = range.end - range.start
+            headers['Content-Range']  = "bytes #{range.start}-#{range.end}/#{stats.size}"
+            headers['Content-Length'] = 1 + range.end - range.start
 
         else
             headers['Content-Length'] = stats.size

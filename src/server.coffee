@@ -354,7 +354,7 @@ class Server
     _handle: (handler, params, req, res)->
         new Promise (resolve, reject)=>
             start = (code, headers)=>
-                res.writeHead code, @_responseHeaders headers, params
+                res.writeHead code, @_responseHeaders {headers}, params
 
             write = (chunk)->
                 res.write chunk
